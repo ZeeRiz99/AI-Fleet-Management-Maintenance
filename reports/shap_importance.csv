@@ -1,0 +1,41 @@
+,mean_abs_shap
+age_years,0.4017944
+service_debt,0.36167058
+km_since_brake_inspection,0.2710706
+km_since_transmission_service,0.2615479
+kmpl_change_vs_prev,0.21677904
+kmpl_ratio_rated_30d,0.1896911
+km_since_engine_tune_up,0.17958169
+km_since_coolant_flush,0.14804018
+km_per_l_rated,0.13666502
+days_since_breakdown,0.12753105
+lub_oil_temp_mean4w,0.12451285
+km_since_oil_change,0.12048856
+km_30d,0.11999044
+engine_rpm_mean4w,0.116959296
+preventive_90d,0.10779811
+coolant_pressure_mean4w,0.08639711
+odometer_km,0.07993966
+harsh_per_100km_30d,0.06556662
+ratio_engine_tune_up,0.0629481
+lub_oil_pressure_mean4w,0.06256917
+ratio_transmission_service,0.06176964
+lub_oil_temp_last,0.055661917
+vehicle_type_Sprinter Van,0.055612385
+engine_rpm_last,0.047005374
+lub_oil_pressure_last,0.046849445
+fuel_pressure_mean4w,0.046154164
+days_since_service,0.045687642
+coolant_temp_last,0.04351063
+coolant_pressure_last,0.043202296
+coolant_temp_mean4w,0.04243593
+ratio_oil_change,0.041990638
+ratio_coolant_flush,0.03138471
+ratio_brake_inspection,0.029811282
+fuel_pressure_last,0.02323733
+km_7d,0.02275222
+breakdowns_180d,0.021230865
+trips_30d,0.013455331
+vehicle_type_Cargo Van,0.009770989
+is_petrol,0.0050698332
+vehicle_type_Box Truck,0.0

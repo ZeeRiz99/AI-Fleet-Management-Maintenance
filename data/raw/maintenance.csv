@@ -1,0 +1,51 @@
+id,vehicle_id,maintenance_date,maintenance_type,odometer_reading,cost,notes
+1,1,2023-08-02,Oil Change,70517,507,Oil Change at 70517 miles
+2,1,2023-10-01,Brake Inspection,70965,457,Brake Inspection at 70965 miles
+3,1,2023-12-04,Battery Replacement,70113,283,Battery Replacement at 70113 miles
+4,1,2024-01-28,Transmission Service,71296,227,Transmission Service at 71296 miles
+5,1,2024-03-30,Oil Change,69885,346,Oil Change at 69885 miles
+6,1,2024-05-26,Air Filter,71644,247,Air Filter at 71644 miles
+7,1,2024-07-27,Battery Replacement,71957,370,Battery Replacement at 71957 miles
+8,1,2024-09-23,Tire Rotation,69290,163,Tire Rotation at 69290 miles
+9,1,2024-11-24,Air Filter,69964,200,Air Filter at 69964 miles
+10,2,2023-08-05,Tire Rotation,77204,100,Tire Rotation at 77204 miles
+11,2,2023-09-29,Oil Change,76571,249,Oil Change at 76571 miles
+12,2,2023-12-04,Tire Rotation,76882,338,Tire Rotation at 76882 miles
+13,2,2024-02-01,Alignment,76439,338,Alignment at 76439 miles
+14,2,2024-03-29,Oil Change,75604,329,Oil Change at 75604 miles
+15,2,2024-05-27,Coolant Flush,76671,621,Coolant Flush at 76671 miles
+16,2,2024-07-26,Alignment,76764,310,Alignment at 76764 miles
+17,2,2024-09-23,Alignment,75756,484,Alignment at 75756 miles
+18,2,2024-11-23,Engine Tune-Up,76030,577,Engine Tune-Up at 76030 miles
+19,3,2023-08-06,Engine Tune-Up,24390,105,Engine Tune-Up at 24390 miles
+20,3,2023-10-05,Brake Inspection,23235,443,Brake Inspection at 23235 miles
+21,3,2023-12-01,Brake Inspection,23459,352,Brake Inspection at 23459 miles
+22,3,2024-02-01,Tire Rotation,23649,294,Tire Rotation at 23649 miles
+23,3,2024-03-31,Brake Inspection,21859,152,Brake Inspection at 21859 miles
+24,3,2024-05-28,Transmission Service,22890,738,Transmission Service at 22890 miles
+25,3,2024-07-25,Alignment,22609,360,Alignment at 22609 miles
+26,3,2024-09-29,Battery Replacement,22042,349,Battery Replacement at 22042 miles
+27,3,2024-11-22,Oil Change,22863,389,Oil Change at 22863 miles
+28,4,2023-08-05,Battery Replacement,70562,513,Battery Replacement at 70562 miles
+29,4,2023-10-01,Wiper Replacement,70285,675,Wiper Replacement at 70285 miles
+30,4,2023-11-30,Tire Rotation,69531,277,Tire Rotation at 69531 miles
+31,4,2024-01-28,Alignment,70102,502,Alignment at 70102 miles
+32,4,2024-03-27,Air Filter,70493,222,Air Filter at 70493 miles
+33,4,2024-05-26,Tire Rotation,69787,347,Tire Rotation at 69787 miles
+34,4,2024-07-26,Brake Inspection,69084,167,Brake Inspection at 69084 miles
+35,4,2024-09-28,Transmission Service,70214,419,Transmission Service at 70214 miles
+36,4,2024-11-27,Air Filter,69314,155,Air Filter at 69314 miles
+37,5,2023-08-05,Wiper Replacement,24477,192,Wiper Replacement at 24477 miles
+38,5,2023-10-02,Brake Inspection,25286,158,Brake Inspection at 25286 miles
+39,5,2023-11-30,Wiper Replacement,26298,450,Wiper Replacement at 26298 miles
+40,5,2024-01-31,Engine Tune-Up,26763,353,Engine Tune-Up at 26763 miles
+41,5,2024-03-27,Engine Tune-Up,25546,266,Engine Tune-Up at 25546 miles
+42,5,2024-05-27,Battery Replacement,27494,309,Battery Replacement at 27494 miles
+43,5,2024-07-29,Battery Replacement,25517,392,Battery Replacement at 25517 miles
+44,5,2024-09-26,Coolant Flush,25802,202,Coolant Flush at 25802 miles
+45,5,2024-11-28,Transmission Service,25061,252,Transmission Service at 25061 miles
+46,6,2023-08-05,Alignment,43633,564,Alignment at 43633 miles
+47,6,2023-10-03,Battery Replacement,42169,220,Battery Replacement at 42169 miles
+48,6,2023-12-02,Tire Rotation,43574,394,Tire Rotation at 43574 miles
+49,6,2024-02-02,Engine Tune-Up,43490,384,Engine Tune-Up at 43490 miles
+50,6,2024-04-01,Coolant Flush,43101,259,Coolant Flush at 43101 miles

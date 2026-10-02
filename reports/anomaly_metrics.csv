@@ -1,0 +1,3 @@
+detector,precision,recall,f1,flagged
+Rule (ratio < 0.81),0.992,0.996,0.994,251
+IsolationForest,0.92,0.964,0.941,262
