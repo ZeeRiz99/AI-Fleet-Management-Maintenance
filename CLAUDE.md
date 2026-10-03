@@ -35,3 +35,22 @@ SQLite, not PostgreSQL. GPS/IoT is NOT in scope (future extension).
 ## Rules agreed with user
 - Time-based split, never random (avoid leakage). Report precision/recall.
 - Keep the synthetic generator as a portfolio asset (avoids mindweave NC license issue for clients).
+
+## UI / design conventions (dashboard redesign, Oct 2026)
+- Theme lives in `.streamlit/config.toml`: light base, primary #2563EB, background #F4F6FB, dark navy sidebar (#0F172A).
+- All styling is in the `CSS` string at the top of `app/streamlit_app.py`. Don't scatter inline styles elsewhere.
+- Helpers to reuse for new UI:
+  - `kpi(col, icon, label, value, sub, tone, full=None)` -> KPI card; tones: blue, green, red, amber, violet, teal.
+    Use `rs_short()` (Rs 1.95 Cr / Rs 39.9 Lakh) for rupee KPI values and pass the exact `rs()` amount as `full` (hover).
+  - `card()` -> white rounded container (key prefix `card_`, styled via `.st-key-card_*`)
+  - `chart_card(fig, h)` -> chart inside a card; always use this (or `chart()`) instead of st.plotly_chart directly.
+    `chart()` sets paper/plot bgcolor explicitly because Streamlit 1.64 paints unset ones with the theme grey even with theme=None.
+  - `section(title, sub)` -> section heading
+- Charts: use the `px` wrapper (applies LABELS + "plotly_white+fleet" template).
+- Colors: risk tiers via TIER_COLORS (High red, Medium amber, Low green); Preventive/Breakdown via KIND_COLORS.
+- Tables: always give st.dataframe a column_config with readable names and Rs/number formatting; never mix numbers and
+  strings in one column (Arrow error) - format the whole column as text instead.
+- Tabs CSS targets `[data-testid="stTab"]` / `[role="tablist"]` (Streamlit >= 1.60, react-aria) with `data-baseweb` fallbacks.
+- KPI rows hold at most 3-4 cards so values never get cut off (Overview uses 2 rows of 3).
+- Assistant tab: chat_input uses key="chat_q"; user bubbles styled blue via :has(stChatMessageAvatarUser); badge shows short provider name.
+- Checked visually at 1440 px and 390 px (phone) with Playwright + Edge. Don't change the data/model logic when doing UI work.
