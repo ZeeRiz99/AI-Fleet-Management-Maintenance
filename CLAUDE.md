@@ -29,7 +29,7 @@ SQLite, not PostgreSQL. GPS/IoT is NOT in scope (future extension).
 - [x] Streamlit dashboard `app/streamlit_app.py` (8 tabs, screenshot-checked with Playwright+Edge), assistant chat `src/agent.py`
 - [x] tests/test_pipeline.py, README.md
 - Assistant has 3 modes (Gemini free tier / Claude / offline fallback) in `src/agent.py`; key can be pasted in the dashboard sidebar. 33 tests pass. Gemini+Claude loops are tested with FAKE clients only; never run live (no keys during build). Default Gemini model `gemini-3.8-flash` (override with GEMINI_MODEL); on 404/429 it auto-falls to the next flash/flash-lite model, retries 503s, and on total failure uses the offline router. User saw live 503 and 429 (free quota) from Gemini, so the request format reached Google, but a full successful Gemini tool-call answer was never confirmed.
-- Not done: git repo (git init), clean-machine install test, deploy. `notebooks/` is empty on purpose (EDA is `src/eda.py` -> reports/data_quality.md).
+- Done: git repo (pushed to GitHub, public by user choice: https://github.com/ZeeRiz99/AI-Fleet-Management-Maintenance), clean-install test from the zip (33 passed). Not done: deploy. `notebooks/` is empty on purpose (EDA is `src/eda.py` -> reports/data_quality.md).
 - Ideas if continuing: real data instead of simulation; tune model / try survival model; WhatsApp/email alerts; deploy (Streamlit Cloud); GPS/IoT.
 
 ## Rules agreed with user
