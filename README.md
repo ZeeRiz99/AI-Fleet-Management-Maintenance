@@ -1,5 +1,7 @@
 # AI Fleet Management & Maintenance System
 
+**Live demo:** https://ai-fleet-management.streamlit.app/ (Streamlit Community Cloud; may take a minute to wake up)
+
 Predicts which vehicles are likely to break down in the next 30 days, explains why (SHAP), flags abnormal fuel use,
 and puts a rupee value on acting early. Built for a Pakistan fleet: km, litres, PKR.
 
