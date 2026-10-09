@@ -64,7 +64,7 @@ fun ProfileScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVie
                     Column(Modifier.weight(1f)) {
                         Text(settings.fullName ?: "Not signed in", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            settings.username?.let { "@$it" } ?: "Sign-in arrives with the API (phase 3)",
+                            settings.username?.let { "@$it" } ?: "Signed out",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
