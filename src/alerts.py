@@ -5,6 +5,8 @@ net saving = P(breakdown in 30d) x (typical breakdown cost + downtime x daily co
 The risk reduction, downtime cost and tiers are assumptions in config.py, not measured values.
 Run:  python src/alerts.py
 """
+from typing import NamedTuple
+
 import joblib
 import numpy as np
 import pandas as pd
@@ -50,15 +52,28 @@ def breakdown_loss_by_type():
     return (g.cost + g.downtime * C.DOWNTIME_COST_PER_DAY_PKR).to_dict()
 
 
+class Scoring(NamedTuple):
+    """Everything one scoring run produces; the API uses the SHAP detail, the CLI/Streamlit only `alerts`."""
+    alerts: pd.DataFrame        # one row per vehicle (same columns as data/processed/alerts.csv)
+    features: pd.DataFrame      # today's feature snapshot, row order matches `x` / `shap_values`
+    x: pd.DataFrame             # model input matrix
+    shap_values: np.ndarray     # per-row SHAP contributions (log-odds), columns = `feature_names`
+    feature_names: list
+
+
 def score_today():
+    return score().alerts
+
+
+def score(as_of=C.AS_OF_DATE):
     model, feats, thr = load_model()
-    cur = build_features(as_of=C.AS_OF_DATE)
+    cur = build_features(as_of=as_of)
     x = design(cur, feats)
     cur["risk_prob"] = model.predict_proba(x)[:, 1]
     sv = shap.TreeExplainer(model).shap_values(x)
 
     veh = query("SELECT v.id vehicle_id, v.registration, v.make_model, v.status, d.city FROM vehicles v JOIN depots d ON d.id = v.depot_id")
-    cur = cur.merge(veh, on="vehicle_id")
+    cur = cur.merge(veh, on="vehicle_id", how="left")  # left join keeps the row order of x / sv
     loss = breakdown_loss_by_type()
     years = (pd.Timestamp(C.AS_OF_DATE) - pd.Timestamp(C.START_DATE)).days / 365
     infl = (1 + C.COST_INFLATION_PER_YEAR) ** years
@@ -81,7 +96,8 @@ def score_today():
                      "service_overdue_pct": round(max(0, ratios.get(svc, 0) - 1) * 100),
                      "service_cost_pkr": round(svc_cost, -2), "expected_loss_pkr": round(exp_loss, -2),
                      "net_saving_pkr": round(net, -2)})
-    return pd.DataFrame(rows).sort_values("risk_prob", ascending=False)
+    alerts = pd.DataFrame(rows).sort_values("risk_prob", ascending=False)
+    return Scoring(alerts, cur.reset_index(drop=True), x.reset_index(drop=True), sv, list(feats))
 
 
 if __name__ == "__main__":

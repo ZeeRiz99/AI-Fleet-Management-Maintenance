@@ -8,6 +8,8 @@ ground truth `is_fuel_anomaly` on a time-based test set (2025):
 The better F1 detector writes data/processed/fuel_anomalies.csv with excess litres and Rs.
 Run:  python src/anomaly.py
 """
+import json
+
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import IsolationForest
@@ -62,6 +64,8 @@ def main():
     print(res.to_string(index=False))
     REPORT_DIR.mkdir(exist_ok=True)
     res.to_csv(REPORT_DIR / "anomaly_metrics.csv", index=False)
+    # the chosen rule, so other components (the FastAPI fuel check) apply exactly the same test
+    (REPORT_DIR / "anomaly_rule.json").write_text(json.dumps({"threshold": round(float(thr), 2), "window": WINDOW}))
 
     # score all trips with the rule (more explainable); excess = litres above the vehicle's own baseline
     t["flagged"] = (t.ratio < thr).astype(int)

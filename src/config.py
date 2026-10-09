@@ -1,10 +1,12 @@
 """Central settings: Pakistan units, prices, and simulation parameters."""
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "data" / "raw"
 PROCESSED = ROOT / "data" / "processed"
-DB_PATH = ROOT / "data" / "fleet.db"
+# FLEET_DB_PATH lets the FastAPI server work on its own copy, so API writes never touch the committed fleet.db.
+DB_PATH = Path(os.environ.get("FLEET_DB_PATH", ROOT / "data" / "fleet.db"))
 
 SEED = 42
 
