@@ -17,7 +17,10 @@ import com.zeeriz.fleetai.domain.model.DriverDetail
 import com.zeeriz.fleetai.domain.model.DriverList
 import com.zeeriz.fleetai.domain.model.TripPage
 import com.zeeriz.fleetai.domain.model.AlertList
+import com.zeeriz.fleetai.domain.model.Health
 import com.zeeriz.fleetai.domain.model.LoginRequest
+import com.zeeriz.fleetai.domain.model.ModelInfo
+import com.zeeriz.fleetai.domain.model.ResetResult
 import com.zeeriz.fleetai.domain.model.ReadResult
 import com.zeeriz.fleetai.domain.model.MaintenancePage
 import com.zeeriz.fleetai.domain.model.MaintenanceSummary
@@ -140,6 +143,13 @@ class FleetRepository(
 
     suspend fun markAllAlertsRead(): ApiResult<ReadResult> =
         send { api().markAllAlertsRead() }.also { if (it is ApiResult.Success) _unreadAlerts.value = 0 }
+
+    suspend fun modelInfo(): ApiResult<ModelInfo> = fetch("model_info", ModelInfo.serializer()) { api().modelInfo() }
+
+    /** Live connectivity check (never cached). */
+    suspend fun health(): ApiResult<Health> = send { api().health() }
+
+    suspend fun resetDemo(): ApiResult<ResetResult> = send { api().resetDemo() }
 
     /** Writes are never served from the cache: they either reach the server or fail. */
     suspend fun predict(id: Int): ApiResult<Prediction> = send { api().predict(id) }

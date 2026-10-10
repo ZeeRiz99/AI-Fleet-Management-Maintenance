@@ -2,6 +2,8 @@ package com.zeeriz.fleetai.data.remote
 
 import com.zeeriz.fleetai.domain.model.AlertList
 import com.zeeriz.fleetai.domain.model.Dashboard
+import com.zeeriz.fleetai.domain.model.ModelInfo
+import com.zeeriz.fleetai.domain.model.ResetResult
 import com.zeeriz.fleetai.domain.model.ReadResult
 import com.zeeriz.fleetai.domain.model.DriverDetail
 import com.zeeriz.fleetai.domain.model.DriverList
@@ -96,6 +98,13 @@ interface FleetApi {
 
     @POST("api/v1/alerts/read-all")
     suspend fun markAllAlertsRead(): ReadResult
+
+    @GET("api/v1/ai/model")
+    suspend fun modelInfo(): ModelInfo
+
+    /** Admin only: restores the demo database (undoes services recorded from the app). */
+    @POST("api/v1/admin/reset-demo")
+    suspend fun resetDemo(): ResetResult
 
     /** Re-runs the XGBoost model + SHAP on current data and returns the explained prediction. */
     @POST("api/v1/ai/predict/{id}")

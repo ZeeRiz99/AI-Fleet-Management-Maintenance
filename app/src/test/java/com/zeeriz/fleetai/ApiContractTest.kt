@@ -3,6 +3,7 @@ package com.zeeriz.fleetai
 import com.zeeriz.fleetai.data.remote.FleetJson
 import com.zeeriz.fleetai.domain.model.AlertList
 import com.zeeriz.fleetai.domain.model.Dashboard
+import com.zeeriz.fleetai.domain.model.ModelInfo
 import com.zeeriz.fleetai.presentation.AlertFilter
 import com.zeeriz.fleetai.presentation.applyFilter
 import com.zeeriz.fleetai.presentation.markRead
@@ -121,5 +122,13 @@ class ApiContractTest {
         assertTrue(after.items.first { it.id == first.id }.read)
         assertEquals(after.unread, after.markRead(setOf(first.id)).unread)   // marking twice does not double count
         assertTrue(after.items.applyFilter(AlertFilter(unreadOnly = true)).none { it.id == first.id })
+    }
+
+    @Test
+    fun modelInfoParses() {
+        val m = FleetJson.decodeFromString(ModelInfo.serializer(), fixture("model_info.json"))
+        assertEquals("XGBoost", m.riskModel.metrics.first().model)
+        assertTrue(m.riskModel.metrics.first().rocAuc!! > 0.6)
+        assertTrue(m.explainability.isNotEmpty() && m.fuelAnomaly.metrics.isNotEmpty() && m.dataNote.contains("simulated"))
     }
 }

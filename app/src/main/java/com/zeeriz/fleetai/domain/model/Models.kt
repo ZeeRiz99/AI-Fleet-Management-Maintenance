@@ -447,3 +447,43 @@ data class AlertList(val total: Int, val unread: Int, val items: List<Alert> = e
 
 @Serializable
 data class ReadResult(val id: String? = null, val read: Boolean = true, val marked: Int = 0)
+
+// ----------------------------------------------------------------------------- model info / admin
+@Serializable
+data class ModelMetric(
+    val model: String,
+    val rocAuc: Double? = null,
+    val prAuc: Double? = null,
+    val threshold: Double? = null,
+    val precision: Double? = null,
+    val recall: Double? = null,
+    val f1: Double? = null,
+    @SerialName("precision_top10pct") val precisionTop10: Double? = null,
+)
+
+@Serializable
+data class RiskModelInfo(val name: String, val target: String, val validation: String, val metrics: List<ModelMetric> = emptyList())
+
+@Serializable
+data class FeatureImportance(val feature: String, val meanAbsShap: Double)
+
+@Serializable
+data class AnomalyMetric(val detector: String, val precision: Double? = null, val recall: Double? = null, val f1: Double? = null)
+
+@Serializable
+data class AnomalyModelInfo(val rule: String, val metrics: List<AnomalyMetric> = emptyList())
+
+@Serializable
+data class ModelInfo(
+    val riskModel: RiskModelInfo,
+    val explainability: List<FeatureImportance> = emptyList(),
+    val fuelAnomaly: AnomalyModelInfo,
+    val healthFormula: String = "",
+    val safetyFormula: String = "",
+    val performanceFormula: String = "",
+    val dataNote: String = "",
+    val scoredAt: String = "",
+)
+
+@Serializable
+data class ResetResult(val status: String, val vehicles: Int = 0)
