@@ -97,12 +97,14 @@ fun BarChart(
     val labelStyle = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
     val gridColor = MaterialTheme.colorScheme.outlineVariant
     Canvas(modifier.fillMaxWidth().height(height)) {
-        val left = AXIS_LABEL_SPACE_DP.dp.toPx()
+        val max = (values.maxOrNull() ?: 0.0).takeIf { it > 0 } ?: 1.0
+        // Money labels like "Rs 2.01 Cr" are wider than the default gutter, so size it to the widest label.
+        val widest = listOf(0.0, max / 2, max).maxOf { measurer.measure(format(it), labelStyle).size.width }
+        val left = maxOf(AXIS_LABEL_SPACE_DP.dp.toPx(), widest + 6.dp.toPx())
         val top = 8.dp.toPx()
         val bottom = 22.dp.toPx()
         val w = size.width - left
         val h = size.height - top - bottom
-        val max = (values.maxOrNull() ?: 0.0).takeIf { it > 0 } ?: 1.0
         listOf(0.0, max / 2, max).forEach { v ->
             val yy = top + (h * (1 - v / max)).toFloat()
             drawLine(gridColor, Offset(left, yy), Offset(size.width, yy), strokeWidth = 1.dp.toPx())

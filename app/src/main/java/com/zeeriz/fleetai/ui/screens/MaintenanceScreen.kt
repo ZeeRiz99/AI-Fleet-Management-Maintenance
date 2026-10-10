@@ -86,7 +86,12 @@ fun MaintenanceScreen(onOpenVehicle: (Int) -> Unit, viewModel: MaintenanceViewMo
                                 MaintenanceTab.UPCOMING -> data.upcoming.size
                                 MaintenanceTab.COMPLETED -> history.total
                             }
-                            Tab(selected = tab == t, onClick = { viewModel.selectTab(t) }, text = { Text("${t.label} ($count)") })
+                            Tab(selected = tab == t, onClick = { viewModel.selectTab(t) }, text = {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(t.label, maxLines = 1)
+                                    Text(Format.number(count), style = MaterialTheme.typography.labelSmall)
+                                }
+                            })
                         }
                     }
                 }
@@ -111,9 +116,9 @@ private fun SummaryGrid(s: MaintenanceSummary) {
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             StatCard("Completed (30d)", Format.number(s.completed30d), Icons.Filled.CheckCircle, Modifier.weight(1f), tone = Tone.SUCCESS,
-                supporting = "${s.breakdowns365d} breakdowns in 12 months")
+                supporting = "${s.breakdowns365d} breakdowns / yr")
             StatCard("Spend (30d)", Format.rupeesShort(s.spend30d), Icons.Filled.Build, Modifier.weight(1f),
-                supporting = "${Format.rupeesShort(s.spend365d)} in 12 months")
+                supporting = "${Format.rupeesShort(s.spend365d)} / yr")
         }
     }
 }

@@ -45,7 +45,7 @@ fun TripRow(t: Trip, modifier: Modifier = Modifier, showVehicle: Boolean = true,
                     Text(who, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f, fill = false), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                if (t.harshBrakingEvents > 0) StatusChip("${t.harshBrakingEvents} harsh brakes", Tone.WARNING, dot = false)
+                if (t.harshBrakingEvents > 0) StatusChip("${t.harshBrakingEvents} harsh brake${if (t.harshBrakingEvents == 1) "" else "s"}", Tone.WARNING, dot = false)
                 if (t.fuelAnomaly) StatusChip("Fuel anomaly", Tone.CRITICAL, dot = false)
             }
         }

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -43,7 +44,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -102,9 +105,9 @@ fun FuelScreen(onBack: () -> Unit, onOpenVehicle: (Int) -> Unit, viewModel: Fuel
                 item { TotalsGrid(data.summary) }
                 item { TrendCard(data.summary) }
                 item { BreakdownCard(data.summary, groupBy, viewModel::setGroupBy, onOpenVehicle) }
+                item { FuelCheckCard(data.summary, form, viewModel::updateForm, viewModel::runCheck) }
                 item { AnomalyHeader(data) }
                 items(data.anomalies.items.take(25), key = { it.tripId }) { a -> AnomalyRow(a) { onOpenVehicle(a.vehicleId) } }
-                item { FuelCheckCard(data.summary, form, viewModel::updateForm, viewModel::runCheck) }
             }
         }
     }
@@ -256,6 +259,11 @@ private fun FuelCheckCard(
     onCheck: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
+    val focus = LocalFocusManager.current
+    val run = {
+        focus.clearFocus() // hide the keyboard so the result card is visible
+        if (form.canCheck) onCheck()
+    }
     val vehicles = remember(s.byVehicle) { s.byVehicle.filter { it.vehicleId != null }.sortedBy { it.name } }
     FleetCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -285,16 +293,17 @@ private fun FuelCheckCard(
             OutlinedTextField(
                 value = form.distanceKm, onValueChange = { v -> update { it.copy(distanceKm = v) } },
                 label = { Text("Distance (km)") }, singleLine = true, modifier = Modifier.weight(1f),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
             )
             OutlinedTextField(
                 value = form.litres, onValueChange = { v -> update { it.copy(litres = v) } },
                 label = { Text("Fuel (litres)") }, singleLine = true, modifier = Modifier.weight(1f),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { run() }),
             )
         }
         Spacer(Modifier.height(10.dp))
-        Button(onClick = onCheck, enabled = form.canCheck, modifier = Modifier.fillMaxWidth()) {
+        Button(onClick = run, enabled = form.canCheck, modifier = Modifier.fillMaxWidth()) {
             if (form.checking) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
             else Text("Run AI check")
         }

@@ -235,6 +235,12 @@ private fun AiPredictionCard(p: Prediction, busy: Boolean, onRerun: () -> Unit, 
                 InfoRow("Service cost", Format.rupees(rec.serviceCost))
                 InfoRow("Expected loss if ignored", Format.rupees(rec.expectedLoss))
                 InfoRow("Net saving", Format.rupees(rec.netSaving), valueTone = if (rec.netSaving > 0) Tone.SUCCESS else Tone.NEUTRAL)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Expected loss = risk × typical breakdown cost. Net saving assumes the service removes 60% of that risk, minus its cost.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
         Spacer(Modifier.height(12.dp))
