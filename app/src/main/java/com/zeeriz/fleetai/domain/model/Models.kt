@@ -392,3 +392,51 @@ data class FuelCheckResult(
     val excessCost: Double,
     val explanation: String,
 )
+
+// ----------------------------------------------------------------------------- drivers & trips
+@Serializable
+data class DriverSummary(
+    val id: Int,
+    val name: String,
+    val licenseNumber: String = "",
+    val depot: String = "",
+    val experienceYears: Int = 0,
+    val trips: Int = 0,
+    val distanceKm: Double = 0.0,
+    @SerialName("harsh_per_100km") val harshPer100Km: Double = 0.0,
+    val safetyScore: Int = 0,
+    val performanceScore: Int = 0,
+    val mostUsedVehicle: String? = null,
+    val mostUsedVehicleId: Int? = null,
+)
+
+@Serializable
+data class DriverList(
+    val days: Int,
+    val safetyFormula: String = "",
+    val performanceFormula: String = "",
+    val items: List<DriverSummary> = emptyList(),
+)
+
+@Serializable
+data class DriverDetail(
+    val id: Int,
+    val name: String,
+    val licenseNumber: String = "",
+    val depot: String = "",
+    val experienceYears: Int = 0,
+    val trips: Int = 0,
+    val distanceKm: Double = 0.0,
+    @SerialName("harsh_per_100km") val harshPer100Km: Double = 0.0,
+    val safetyScore: Int = 0,
+    val performanceScore: Int = 0,
+    val mostUsedVehicle: String? = null,
+    val mostUsedVehicleId: Int? = null,
+    val days: Int = 180,
+    val safetyFormula: String = "",
+    val performanceFormula: String = "",
+    val recentTrips: List<Trip> = emptyList(),
+)
+
+@Serializable
+data class TripPage(val total: Int, val active: Int = 0, val note: String = "", val items: List<Trip> = emptyList())

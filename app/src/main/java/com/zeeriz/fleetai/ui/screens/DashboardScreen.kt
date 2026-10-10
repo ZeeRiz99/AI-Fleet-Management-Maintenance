@@ -67,6 +67,7 @@ data class DashboardActions(
     val openAlerts: () -> Unit,
     val openFuel: () -> Unit,
     val openDrivers: () -> Unit,
+    val openTrips: () -> Unit,
 )
 
 @Composable
@@ -86,6 +87,7 @@ fun DashboardScreen(actions: DashboardActions, viewModel: DashboardViewModel = v
             LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 if (state.offlineSince != null || state.error != null) item { DataStatusBanner(state) }
                 item { FleetStatusGrid(data, actions) }
+                item { QuickLinks(actions) }
                 item { AiRiskCard(data, actions.openVehicle, actions.openVehicles) }
                 item { HealthCard(data) }
                 item { FuelCard(data, actions.openFuel) }
@@ -119,6 +121,26 @@ private fun FleetStatusGrid(d: Dashboard, actions: DashboardActions) {
             StatCard("Unread alerts", Format.number(d.unreadAlerts), Icons.Filled.Notifications, Modifier.weight(1f),
                 tone = if (d.unreadAlerts > 0) Tone.CRITICAL else Tone.SUCCESS, supporting = "Tap to review",
                 onClick = actions.openAlerts)
+        }
+    }
+}
+
+@Composable
+private fun QuickLinks(actions: DashboardActions) {
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        QuickLink("Fuel", FleetIcons.Fuel, Modifier.weight(1f), actions.openFuel)
+        QuickLink("Drivers", Icons.Filled.Person, Modifier.weight(1f), actions.openDrivers)
+        QuickLink("Trips", FleetIcons.Route, Modifier.weight(1f), actions.openTrips)
+    }
+}
+
+@Composable
+private fun QuickLink(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier, onClick: () -> Unit) {
+    FleetCard(modifier = modifier, onClick = onClick, contentPadding = 12) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(label, style = MaterialTheme.typography.labelLarge)
         }
     }
 }

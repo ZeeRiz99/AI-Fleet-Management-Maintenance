@@ -1,6 +1,9 @@
 package com.zeeriz.fleetai.data.remote
 
 import com.zeeriz.fleetai.domain.model.Dashboard
+import com.zeeriz.fleetai.domain.model.DriverDetail
+import com.zeeriz.fleetai.domain.model.DriverList
+import com.zeeriz.fleetai.domain.model.TripPage
 import com.zeeriz.fleetai.domain.model.FuelAnomalies
 import com.zeeriz.fleetai.domain.model.FuelCheckRequest
 import com.zeeriz.fleetai.domain.model.FuelCheckResult
@@ -68,6 +71,20 @@ interface FleetApi {
     /** Live AI check of one fuel entry against the vehicle's own baseline (same rule as the batch detector). */
     @POST("api/v1/ai/fuel-check")
     suspend fun fuelCheck(@Body body: FuelCheckRequest): FuelCheckResult
+
+    @GET("api/v1/drivers")
+    suspend fun drivers(@Query("days") days: Int = 180): DriverList
+
+    @GET("api/v1/drivers/{id}")
+    suspend fun driver(@Path("id") id: Int, @Query("days") days: Int = 180): DriverDetail
+
+    @GET("api/v1/trips")
+    suspend fun trips(
+        @Query("vehicle_id") vehicleId: Int? = null,
+        @Query("driver_id") driverId: Int? = null,
+        @Query("limit") limit: Int = 30,
+        @Query("offset") offset: Int = 0,
+    ): TripPage
 
     /** Re-runs the XGBoost model + SHAP on current data and returns the explained prediction. */
     @POST("api/v1/ai/predict/{id}")

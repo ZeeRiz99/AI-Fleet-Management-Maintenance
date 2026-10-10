@@ -60,6 +60,7 @@ import com.zeeriz.fleetai.ui.components.SectionHeader
 import com.zeeriz.fleetai.ui.components.StateContent
 import com.zeeriz.fleetai.ui.components.StatusChip
 import com.zeeriz.fleetai.ui.components.StatusMapping
+import com.zeeriz.fleetai.ui.components.TripRow
 import com.zeeriz.fleetai.ui.theme.Tone
 import com.zeeriz.fleetai.ui.theme.accent
 import com.zeeriz.fleetai.ui.theme.container
@@ -330,19 +331,6 @@ private fun RecordRow(r: MaintenanceRecord) {
 private fun RecentTripsCard(trips: List<Trip>) {
     FleetCard {
         SectionHeader("Recent trips")
-        trips.forEach { t ->
-            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(t.route, style = MaterialTheme.typography.titleSmall)
-                    Text("${Format.date(t.date)} · ${t.startTime}–${t.endTime} · ${t.driver}", style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(Format.km(t.distanceKm), style = MaterialTheme.typography.labelLarge)
-                    Text("${Format.decimal(t.fuelLitres)} L", style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
+        trips.forEach { t -> TripRow(t, showVehicle = false) }
     }
 }

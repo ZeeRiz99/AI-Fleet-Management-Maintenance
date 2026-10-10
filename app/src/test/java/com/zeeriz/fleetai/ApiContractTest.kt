@@ -2,6 +2,11 @@ package com.zeeriz.fleetai
 
 import com.zeeriz.fleetai.data.remote.FleetJson
 import com.zeeriz.fleetai.domain.model.Dashboard
+import com.zeeriz.fleetai.domain.model.DriverDetail
+import com.zeeriz.fleetai.domain.model.DriverList
+import com.zeeriz.fleetai.domain.model.TripPage
+import com.zeeriz.fleetai.presentation.DriverSort
+import com.zeeriz.fleetai.presentation.sortDrivers
 import com.zeeriz.fleetai.domain.model.FuelAnomalies
 import com.zeeriz.fleetai.domain.model.FuelSummary
 import com.zeeriz.fleetai.domain.model.MaintenancePage
@@ -83,5 +88,18 @@ class ApiContractTest {
         assertTrue(s.totals.cost > 0 && s.byVehicle.size == 58 && s.byVehicle.all { it.vehicleId != null })
         assertTrue(s.byDepot.size == 3 && s.monthly.isNotEmpty() && s.priceMonthly.isNotEmpty())
         assertTrue(a.count > 0 && a.items.all { it.actualKmPerL < it.baselineKmPerL && it.explanation.isNotBlank() })
+    }
+
+    @Test
+    fun driversAndTripsParse() {
+        val list = FleetJson.decodeFromString(DriverList.serializer(), fixture("drivers.json"))
+        assertEquals(24, list.items.size)
+        assertTrue(list.items.all { it.safetyScore in 0..100 && it.performanceScore in 0..100 })
+        val worst = list.items.sortDrivers(DriverSort.SAFETY_LOW)
+        assertTrue(worst.first().safetyScore <= worst.last().safetyScore)
+        val d = FleetJson.decodeFromString(DriverDetail.serializer(), fixture("driver_1.json"))
+        assertTrue(d.recentTrips.isNotEmpty() && d.safetyFormula.isNotBlank())
+        val trips = FleetJson.decodeFromString(TripPage.serializer(), fixture("trips.json"))
+        assertTrue(trips.total > 40000 && trips.items.size == 30 && trips.active == 0)
     }
 }

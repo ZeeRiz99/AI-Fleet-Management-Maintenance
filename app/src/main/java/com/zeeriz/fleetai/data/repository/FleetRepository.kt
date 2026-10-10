@@ -13,6 +13,9 @@ import com.zeeriz.fleetai.domain.model.FuelAnomalies
 import com.zeeriz.fleetai.domain.model.FuelCheckRequest
 import com.zeeriz.fleetai.domain.model.FuelCheckResult
 import com.zeeriz.fleetai.domain.model.FuelSummary
+import com.zeeriz.fleetai.domain.model.DriverDetail
+import com.zeeriz.fleetai.domain.model.DriverList
+import com.zeeriz.fleetai.domain.model.TripPage
 import com.zeeriz.fleetai.domain.model.LoginRequest
 import com.zeeriz.fleetai.domain.model.MaintenancePage
 import com.zeeriz.fleetai.domain.model.MaintenanceSummary
@@ -117,6 +120,13 @@ class FleetRepository(
 
     suspend fun fuelCheck(vehicleId: Int, distanceKm: Double, litres: Double): ApiResult<FuelCheckResult> =
         send { api().fuelCheck(FuelCheckRequest(vehicleId, distanceKm, litres)) }
+
+    suspend fun drivers(): ApiResult<DriverList> = fetch("drivers", DriverList.serializer()) { api().drivers() }
+
+    suspend fun driver(id: Int): ApiResult<DriverDetail> = fetch("driver_$id", DriverDetail.serializer()) { api().driver(id) }
+
+    suspend fun trips(offset: Int, driverId: Int? = null): ApiResult<TripPage> =
+        fetch("trips_${driverId ?: "all"}_$offset", TripPage.serializer()) { api().trips(driverId = driverId, offset = offset) }
 
     /** Writes are never served from the cache: they either reach the server or fail. */
     suspend fun predict(id: Int): ApiResult<Prediction> = send { api().predict(id) }

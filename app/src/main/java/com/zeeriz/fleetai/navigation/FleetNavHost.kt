@@ -12,6 +12,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.zeeriz.fleetai.ui.screens.DashboardActions
 import com.zeeriz.fleetai.ui.screens.DashboardScreen
+import com.zeeriz.fleetai.ui.screens.DriverDetailScreen
+import com.zeeriz.fleetai.ui.screens.DriversScreen
+import com.zeeriz.fleetai.ui.screens.TripsScreen
 import com.zeeriz.fleetai.ui.screens.FuelScreen
 import com.zeeriz.fleetai.ui.screens.LoginScreen
 import com.zeeriz.fleetai.ui.screens.MaintenanceScreen
@@ -27,6 +30,7 @@ fun FleetNavHost(
     modifier: Modifier = Modifier,
 ) {
     val back: () -> Unit = { navController.popBackStack() }
+    val openVehicle: (Int) -> Unit = { navController.navigate(Routes.vehicleDetail(it)) }
     val dashboardActions = DashboardActions(
         openVehicle = { navController.navigate(Routes.vehicleDetail(it)) },
         openVehicles = { navController.navigateToTab(Routes.VEHICLES) },
@@ -34,6 +38,7 @@ fun FleetNavHost(
         openAlerts = { navController.navigateToTab(Routes.ALERTS) },
         openFuel = { navController.navigate(Routes.FUEL) },
         openDrivers = { navController.navigate(Routes.DRIVERS) },
+        openTrips = { navController.navigate(Routes.TRIPS) },
     )
     NavHost(
         navController = navController,
@@ -57,13 +62,11 @@ fun FleetNavHost(
             arguments = listOf(navArgument(Routes.VEHICLE_ID) { type = NavType.IntType }),
         ) { VehicleDetailScreen(onBack = back) }
         composable(Routes.FUEL) { FuelScreen(onBack = back, onOpenVehicle = { navController.navigate(Routes.vehicleDetail(it)) }) }
-        composable(Routes.DRIVERS) { PlaceholderScreen("Drivers", phase = 7, onBack = back) }
+        composable(Routes.DRIVERS) { DriversScreen(onBack = back, onOpenDriver = { navController.navigate(Routes.driverDetail(it)) }) }
         composable(
             Routes.DRIVER_DETAIL,
             arguments = listOf(navArgument(Routes.DRIVER_ID) { type = NavType.IntType }),
-        ) { entry ->
-            PlaceholderScreen("Driver #${entry.arguments?.getInt(Routes.DRIVER_ID)}", phase = 7, onBack = back)
-        }
-        composable(Routes.TRIPS) { PlaceholderScreen("Trips", phase = 7, onBack = back) }
+        ) { DriverDetailScreen(onBack = back, onOpenVehicle = openVehicle) }
+        composable(Routes.TRIPS) { TripsScreen(onBack = back, onOpenVehicle = openVehicle) }
     }
 }
