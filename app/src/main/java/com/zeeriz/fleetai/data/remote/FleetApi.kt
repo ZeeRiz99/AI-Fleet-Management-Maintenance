@@ -1,6 +1,8 @@
 package com.zeeriz.fleetai.data.remote
 
+import com.zeeriz.fleetai.domain.model.AlertList
 import com.zeeriz.fleetai.domain.model.Dashboard
+import com.zeeriz.fleetai.domain.model.ReadResult
 import com.zeeriz.fleetai.domain.model.DriverDetail
 import com.zeeriz.fleetai.domain.model.DriverList
 import com.zeeriz.fleetai.domain.model.TripPage
@@ -85,6 +87,15 @@ interface FleetApi {
         @Query("limit") limit: Int = 30,
         @Query("offset") offset: Int = 0,
     ): TripPage
+
+    @GET("api/v1/alerts")
+    suspend fun alerts(): AlertList
+
+    @POST("api/v1/alerts/{id}/read")
+    suspend fun markAlertRead(@Path("id") id: String): ReadResult
+
+    @POST("api/v1/alerts/read-all")
+    suspend fun markAllAlertsRead(): ReadResult
 
     /** Re-runs the XGBoost model + SHAP on current data and returns the explained prediction. */
     @POST("api/v1/ai/predict/{id}")

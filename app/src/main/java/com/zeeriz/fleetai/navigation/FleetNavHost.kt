@@ -10,6 +10,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.zeeriz.fleetai.ui.screens.AlertsScreen
 import com.zeeriz.fleetai.ui.screens.DashboardActions
 import com.zeeriz.fleetai.ui.screens.DashboardScreen
 import com.zeeriz.fleetai.ui.screens.DriverDetailScreen
@@ -18,7 +19,6 @@ import com.zeeriz.fleetai.ui.screens.TripsScreen
 import com.zeeriz.fleetai.ui.screens.FuelScreen
 import com.zeeriz.fleetai.ui.screens.LoginScreen
 import com.zeeriz.fleetai.ui.screens.MaintenanceScreen
-import com.zeeriz.fleetai.ui.screens.PlaceholderScreen
 import com.zeeriz.fleetai.ui.screens.ProfileScreen
 import com.zeeriz.fleetai.ui.screens.VehicleDetailScreen
 import com.zeeriz.fleetai.ui.screens.VehiclesScreen
@@ -54,7 +54,7 @@ fun FleetNavHost(
         composable(Routes.HOME) { DashboardScreen(dashboardActions) }
         composable(Routes.VEHICLES) { VehiclesScreen(onOpenVehicle = { navController.navigate(Routes.vehicleDetail(it)) }) }
         composable(Routes.MAINTENANCE) { MaintenanceScreen(onOpenVehicle = { navController.navigate(Routes.vehicleDetail(it)) }) }
-        composable(Routes.ALERTS) { PlaceholderScreen("Alerts", phase = 8) }
+        composable(Routes.ALERTS) { AlertsScreen(onOpenVehicle = openVehicle) }
         composable(Routes.PROFILE) { ProfileScreen() }
 
         composable(

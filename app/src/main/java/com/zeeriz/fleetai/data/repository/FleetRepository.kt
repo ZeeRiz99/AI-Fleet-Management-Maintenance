@@ -16,7 +16,9 @@ import com.zeeriz.fleetai.domain.model.FuelSummary
 import com.zeeriz.fleetai.domain.model.DriverDetail
 import com.zeeriz.fleetai.domain.model.DriverList
 import com.zeeriz.fleetai.domain.model.TripPage
+import com.zeeriz.fleetai.domain.model.AlertList
 import com.zeeriz.fleetai.domain.model.LoginRequest
+import com.zeeriz.fleetai.domain.model.ReadResult
 import com.zeeriz.fleetai.domain.model.MaintenancePage
 import com.zeeriz.fleetai.domain.model.MaintenanceSummary
 import com.zeeriz.fleetai.domain.model.ScheduleItem
@@ -127,6 +129,17 @@ class FleetRepository(
 
     suspend fun trips(offset: Int, driverId: Int? = null): ApiResult<TripPage> =
         fetch("trips_${driverId ?: "all"}_$offset", TripPage.serializer()) { api().trips(driverId = driverId, offset = offset) }
+
+    /** All alerts with this user's read-state; also refreshes the bottom-bar badge. */
+    suspend fun alerts(): ApiResult<AlertList> =
+        fetch("alerts", AlertList.serializer()) { api().alerts() }
+            .also { if (it is ApiResult.Success && !it.fromCache) _unreadAlerts.value = it.data.unread }
+
+    suspend fun markAlertRead(id: String): ApiResult<ReadResult> =
+        send { api().markAlertRead(id) }.also { if (it is ApiResult.Success) _unreadAlerts.value = (_unreadAlerts.value - 1).coerceAtLeast(0) }
+
+    suspend fun markAllAlertsRead(): ApiResult<ReadResult> =
+        send { api().markAllAlertsRead() }.also { if (it is ApiResult.Success) _unreadAlerts.value = 0 }
 
     /** Writes are never served from the cache: they either reach the server or fail. */
     suspend fun predict(id: Int): ApiResult<Prediction> = send { api().predict(id) }

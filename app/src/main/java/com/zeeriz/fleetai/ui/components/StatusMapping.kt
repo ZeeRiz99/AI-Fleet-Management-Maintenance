@@ -36,5 +36,17 @@ object StatusMapping {
         else -> "No record"
     }
 
+    /** Alert categories from the API, in the order shown as filter chips. */
+    val alertCategories = listOf(
+        "high_risk" to "High risk",
+        "maintenance_overdue" to "Overdue",
+        "maintenance_due" to "Due soon",
+        "fuel_anomaly" to "Fuel anomaly",
+        "health_warning" to "Health warning",
+        "operational" to "Operational",
+    )
+
+    fun categoryLabel(category: String): String = alertCategories.firstOrNull { it.first == category }?.second ?: category
+
     fun vehicleStatusLabel(status: String): String = if (status == "maintenance") "In workshop" else "Active"
 }

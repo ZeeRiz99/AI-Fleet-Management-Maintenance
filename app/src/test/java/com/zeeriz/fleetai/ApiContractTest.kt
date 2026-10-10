@@ -1,7 +1,11 @@
 package com.zeeriz.fleetai
 
 import com.zeeriz.fleetai.data.remote.FleetJson
+import com.zeeriz.fleetai.domain.model.AlertList
 import com.zeeriz.fleetai.domain.model.Dashboard
+import com.zeeriz.fleetai.presentation.AlertFilter
+import com.zeeriz.fleetai.presentation.applyFilter
+import com.zeeriz.fleetai.presentation.markRead
 import com.zeeriz.fleetai.domain.model.DriverDetail
 import com.zeeriz.fleetai.domain.model.DriverList
 import com.zeeriz.fleetai.domain.model.TripPage
@@ -101,5 +105,21 @@ class ApiContractTest {
         assertTrue(d.recentTrips.isNotEmpty() && d.safetyFormula.isNotBlank())
         val trips = FleetJson.decodeFromString(TripPage.serializer(), fixture("trips.json"))
         assertTrue(trips.total > 40000 && trips.items.size == 30 && trips.active == 0)
+    }
+
+    @Test
+    fun alertsParseFilterAndMarkRead() {
+        val list = FleetJson.decodeFromString(AlertList.serializer(), fixture("alerts.json"))
+        assertTrue(list.total > 0 && list.items.size == list.total)
+        val categories = list.items.map { it.category }.toSet()
+        assertTrue(categories.containsAll(setOf("high_risk", "maintenance_overdue", "fuel_anomaly")))
+        val highRisk = list.items.applyFilter(AlertFilter(category = "high_risk"))
+        assertTrue(highRisk.isNotEmpty() && highRisk.all { it.severity == "critical" })
+        val first = list.items.first { !it.read }
+        val after = list.markRead(setOf(first.id))
+        assertEquals(list.unread - 1, after.unread)
+        assertTrue(after.items.first { it.id == first.id }.read)
+        assertEquals(after.unread, after.markRead(setOf(first.id)).unread)   // marking twice does not double count
+        assertTrue(after.items.applyFilter(AlertFilter(unreadOnly = true)).none { it.id == first.id })
     }
 }

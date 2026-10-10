@@ -440,3 +440,10 @@ data class DriverDetail(
 
 @Serializable
 data class TripPage(val total: Int, val active: Int = 0, val note: String = "", val items: List<Trip> = emptyList())
+
+// ----------------------------------------------------------------------------- alerts
+@Serializable
+data class AlertList(val total: Int, val unread: Int, val items: List<Alert> = emptyList())
+
+@Serializable
+data class ReadResult(val id: String? = null, val read: Boolean = true, val marked: Int = 0)
