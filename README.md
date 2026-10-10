@@ -52,6 +52,38 @@ quote numbers the tools return. The offline router is kept as a fallback so the 
 request types are built with the real libraries, but they have **not been run against the live APIs** (no keys were
 available during the build). Default Gemini model is `gemini-3.8-flash`; if Google has retired it, set `GEMINI_MODEL`.
 
+## REST API (for the Android app)
+
+A FastAPI service in `api/` exposes the same data and models to the
+FleetAI Android app (separate project). Streamlit is not involved.
+
+```powershell
+.venv\Scripts\python.exe -m uvicorn api.main:app --host 0.0.0.0 --port 8000   # docs: http://localhost:8000/docs
+```
+
+- The API works on its own copy of the database (`data/runtime/fleet_api.db`, git-ignored), so recording a service
+  through the app never changes `data/fleet.db`. `POST /api/v1/admin/reset-demo` restores the copy.
+- Auth: `POST /api/v1/auth/login` returns a JWT (HS256, 12 h); every other route except `/health` needs
+  `Authorization: Bearer <token>`. Demo login `admin` / `fleet123`.
+- Settings (environment variables): `FLEET_ADMIN_USER`, `FLEET_ADMIN_PASSWORD` (set it for anything beyond a local
+  demo), `FLEET_API_SECRET` (otherwise generated once and stored in `data/runtime/app_state.db`),
+  `FLEET_TOKEN_MINUTES`, `FLEET_RUNTIME_DIR`.
+
+| Area | Endpoints (prefix `/api/v1`) |
+|---|---|
+| System / auth | `GET /health`, `POST /auth/login`, `GET /auth/me` |
+| Dashboard | `GET /dashboard` |
+| Vehicles | `GET /vehicles`, `GET /vehicles/{id}` (includes AI prediction + SHAP + schedule), `GET /vehicles/{id}/trips` |
+| Maintenance | `GET /maintenance/summary`, `GET /maintenance/schedule`, `GET /maintenance/history`, `POST /maintenance` (record a service, then re-score) |
+| Fuel | `GET /fuel/summary`, `GET /fuel/anomalies` |
+| Drivers / trips | `GET /drivers`, `GET /drivers/{id}`, `GET /trips` |
+| Alerts | `GET /alerts`, `POST /alerts/{id}/read`, `POST /alerts/read-all` |
+| AI | `GET /ai/model`, `POST /ai/predict/{id}`, `POST /ai/fuel-check` |
+| Admin | `POST /admin/reset-demo` |
+
+Risk scores come from the same `src/alerts.py` scoring (XGBoost + SHAP) as the dashboard; `tests/test_api.py`
+(14 tests) covers auth, every endpoint and the record-service → re-score loop.
+
 ## Project layout
 
 | Path | Purpose |
@@ -66,6 +98,7 @@ available during the build). Default Gemini model is `gemini-3.8-flash`; if Goog
 | `src/agent.py` | assistant tools + offline/Claude chat |
 | `src/eda.py` | data-quality report -> `reports/data_quality.md` |
 | `app/streamlit_app.py` | dashboard |
+| `api/` | FastAPI backend for the Android app (`main.py` routes, `fleet.py` service, `schemas.py`, `security.py`) |
 | `tests/` | data integrity, no-leakage, label, model, alert and assistant tests |
 
 ## Data: hybrid, and what that means

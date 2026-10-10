@@ -54,3 +54,14 @@ SQLite, not PostgreSQL. GPS/IoT is NOT in scope (future extension).
 - KPI rows hold at most 3-4 cards so values never get cut off (Overview uses 2 rows of 3).
 - Assistant tab: chat_input uses key="chat_q"; user bubbles styled blue via :has(stChatMessageAvatarUser); badge shows short provider name.
 - Checked visually at 1440 px and 390 px (phone) with Playwright + Edge. Don't change the data/model logic when doing UI work.
+
+## REST API + Android app (Oct 2026)
+- `api/` FastAPI backend (routes under /api/v1, JWT auth, demo login admin/fleet123). Works on a runtime copy
+  `data/runtime/fleet_api.db` (git-ignored); `POST /maintenance` records a service and re-scores via `alerts.score()`.
+  Run: `.venv\Scripts\python.exe -m uvicorn api.main:app --host 0.0.0.0 --port 8000`. 47 tests pass (14 API).
+- Android app: separate git repo `D:\Projects\Fleet Management Android` (Kotlin, Compose, MVVM, Retrofit). Phases 1-10
+  done, README written; NOT on GitHub yet (ask the user before creating a repo / pushing).
+  Build: JAVA_HOME = Android Studio jbr, ANDROID_HOME = D:\dev\AndroidStudio\Sdk, GRADLE_USER_HOME is the user env var
+  (D:\dev\AndroidStudio\.gradle; never point it elsewhere). Run `gradlew --stop` after builds: laptop has 7.8 GB RAM and
+  the emulator + Gradle together starve it. Real phone testing via `adb reverse tcp:8000 tcp:8000` + http://localhost:8000.
+- The API commits are local only until the user approves a push (a push to main redeploys Streamlit).
