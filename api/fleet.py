@@ -472,10 +472,10 @@ class FleetService:
         excess = max(0.0, fuel_litres - expected)
         price = C.FUEL_PRICE_NOW[self.vehicles.loc[vid].fuel_type]
         if abnormal:
-            text = (f"Abnormal: {actual:.2f} km/l is only {ratio * 100:.0f}% of this vehicle's normal {baseline:.2f} km/l. "
+            text = (f"{actual:.2f} km/l is only {ratio * 100:.0f}% of this vehicle's normal {baseline:.2f} km/l. "
                     f"About {excess:.1f} L (Rs {excess * price:,.0f}) more than expected - check for a leak, theft or a wrong meter reading.")
         else:
-            text = (f"Normal: {actual:.2f} km/l is {ratio * 100:.0f}% of this vehicle's usual {baseline:.2f} km/l "
+            text = (f"{actual:.2f} km/l is {ratio * 100:.0f}% of this vehicle's usual {baseline:.2f} km/l "
                     f"(flagged only below {self.anomaly_threshold * 100:.0f}%).")
         return {"vehicle_id": int(vid), "registration": self.vehicles.loc[vid].registration, "abnormal": bool(abnormal),
                 "verdict": "Abnormal" if abnormal else "Normal", "ratio": round(ratio, 3), "threshold": self.anomaly_threshold,

@@ -135,7 +135,7 @@ def test_live_fuel_check(client, auth):
     ok = client.post("/api/v1/ai/fuel-check", json={"vehicle_id": vid, "distance_km": 200, "fuel_litres": normal_litres}, headers=auth).json()
     assert ok["verdict"] == "Normal" and not ok["abnormal"]
     bad = client.post("/api/v1/ai/fuel-check", json={"vehicle_id": vid, "distance_km": 200, "fuel_litres": normal_litres * 1.6}, headers=auth).json()
-    assert bad["verdict"] == "Abnormal" and bad["excess_litres"] > 0 and "Abnormal" in bad["explanation"]
+    assert bad["verdict"] == "Abnormal" and bad["excess_litres"] > 0 and "more than expected" in bad["explanation"]
 
 
 def test_drivers_and_trips(client, auth):
