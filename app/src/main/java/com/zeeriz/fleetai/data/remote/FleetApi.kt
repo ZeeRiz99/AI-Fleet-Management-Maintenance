@@ -1,6 +1,10 @@
 package com.zeeriz.fleetai.data.remote
 
 import com.zeeriz.fleetai.domain.model.Dashboard
+import com.zeeriz.fleetai.domain.model.FuelAnomalies
+import com.zeeriz.fleetai.domain.model.FuelCheckRequest
+import com.zeeriz.fleetai.domain.model.FuelCheckResult
+import com.zeeriz.fleetai.domain.model.FuelSummary
 import com.zeeriz.fleetai.domain.model.MaintenancePage
 import com.zeeriz.fleetai.domain.model.MaintenanceSummary
 import com.zeeriz.fleetai.domain.model.ScheduleItem
@@ -54,6 +58,16 @@ interface FleetApi {
         @Query("limit") limit: Int = 50,
         @Query("offset") offset: Int = 0,
     ): MaintenancePage
+
+    @GET("api/v1/fuel/summary")
+    suspend fun fuelSummary(@Query("days") days: Int): FuelSummary
+
+    @GET("api/v1/fuel/anomalies")
+    suspend fun fuelAnomalies(@Query("days") days: Int, @Query("limit") limit: Int = 100): FuelAnomalies
+
+    /** Live AI check of one fuel entry against the vehicle's own baseline (same rule as the batch detector). */
+    @POST("api/v1/ai/fuel-check")
+    suspend fun fuelCheck(@Body body: FuelCheckRequest): FuelCheckResult
 
     /** Re-runs the XGBoost model + SHAP on current data and returns the explained prediction. */
     @POST("api/v1/ai/predict/{id}")

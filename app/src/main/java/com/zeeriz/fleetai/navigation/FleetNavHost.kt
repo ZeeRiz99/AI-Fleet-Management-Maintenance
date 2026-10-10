@@ -12,6 +12,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.zeeriz.fleetai.ui.screens.DashboardActions
 import com.zeeriz.fleetai.ui.screens.DashboardScreen
+import com.zeeriz.fleetai.ui.screens.FuelScreen
 import com.zeeriz.fleetai.ui.screens.LoginScreen
 import com.zeeriz.fleetai.ui.screens.MaintenanceScreen
 import com.zeeriz.fleetai.ui.screens.PlaceholderScreen
@@ -55,7 +56,7 @@ fun FleetNavHost(
             Routes.VEHICLE_DETAIL,
             arguments = listOf(navArgument(Routes.VEHICLE_ID) { type = NavType.IntType }),
         ) { VehicleDetailScreen(onBack = back) }
-        composable(Routes.FUEL) { PlaceholderScreen("Fuel analytics", phase = 6, onBack = back) }
+        composable(Routes.FUEL) { FuelScreen(onBack = back, onOpenVehicle = { navController.navigate(Routes.vehicleDetail(it)) }) }
         composable(Routes.DRIVERS) { PlaceholderScreen("Drivers", phase = 7, onBack = back) }
         composable(
             Routes.DRIVER_DETAIL,

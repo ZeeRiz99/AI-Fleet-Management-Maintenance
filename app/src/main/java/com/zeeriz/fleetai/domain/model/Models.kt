@@ -301,3 +301,94 @@ data class MaintenanceSummary(
 
 @Serializable
 data class MaintenancePage(val total: Int, val items: List<MaintenanceRecord>)
+
+// ----------------------------------------------------------------------------- fuel
+@Serializable
+data class FuelTotals(
+    val trips: Int = 0,
+    val km: Double = 0.0,
+    val litres: Double = 0.0,
+    val cost: Double = 0.0,
+    val costPerKm: Double? = null,
+    val kmPerLitre: Double? = null,
+    @SerialName("litres_per_100km") val litresPer100Km: Double? = null,
+    val anomalies: Int = 0,
+    val anomalyExcessCost: Double = 0.0,
+)
+
+@Serializable
+data class FuelGroup(
+    val name: String,
+    val km: Double = 0.0,
+    val litres: Double = 0.0,
+    val cost: Double = 0.0,
+    val trips: Int = 0,
+    val costPerKm: Double? = null,
+    val kmPerLitre: Double? = null,
+    val vehicleId: Int? = null,
+)
+
+@Serializable
+data class FuelPrice(val month: String, val petrol: Double? = null, val diesel: Double? = null)
+
+@Serializable
+data class FuelSummary(
+    val days: Int,
+    val periodEnd: String = "",
+    val totals: FuelTotals,
+    val byVehicle: List<FuelGroup> = emptyList(),
+    val byDepot: List<FuelGroup> = emptyList(),
+    val byModel: List<FuelGroup> = emptyList(),
+    val monthly: List<FuelMonth> = emptyList(),
+    val priceMonthly: List<FuelPrice> = emptyList(),
+)
+
+@Serializable
+data class FuelAnomaly(
+    val tripId: Int,
+    val date: String,
+    val vehicleId: Int,
+    val registration: String? = null,
+    val driver: String? = null,
+    val route: String = "",
+    val distanceKm: Double = 0.0,
+    val fuelLitres: Double = 0.0,
+    val expectedLitres: Double = 0.0,
+    val baselineKmPerL: Double = 0.0,
+    val actualKmPerL: Double = 0.0,
+    val ratio: Double = 0.0,
+    val excessLitres: Double = 0.0,
+    val excessCost: Double = 0.0,
+    val explanation: String = "",
+)
+
+@Serializable
+data class FuelAnomalies(
+    val days: Int,
+    val count: Int,
+    val excessLitres: Double = 0.0,
+    val excessCost: Double = 0.0,
+    val vehiclesAffected: Int = 0,
+    val threshold: Double = 0.0,
+    val method: String = "",
+    val items: List<FuelAnomaly> = emptyList(),
+)
+
+@Serializable
+data class FuelCheckRequest(val vehicleId: Int, val distanceKm: Double, val fuelLitres: Double)
+
+@Serializable
+data class FuelCheckResult(
+    val vehicleId: Int,
+    val registration: String,
+    val abnormal: Boolean,
+    val verdict: String,
+    val ratio: Double,
+    val threshold: Double,
+    val baselineKmPerL: Double,
+    val actualKmPerL: Double,
+    val expectedLitres: Double,
+    val excessLitres: Double,
+    val excessCost: Double,
+    val explanation: String,
+)

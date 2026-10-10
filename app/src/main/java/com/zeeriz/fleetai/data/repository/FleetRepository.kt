@@ -9,6 +9,10 @@ import com.zeeriz.fleetai.data.remote.FleetApi
 import com.zeeriz.fleetai.data.remote.FleetJson
 import com.zeeriz.fleetai.data.remote.toFailure
 import com.zeeriz.fleetai.domain.model.Dashboard
+import com.zeeriz.fleetai.domain.model.FuelAnomalies
+import com.zeeriz.fleetai.domain.model.FuelCheckRequest
+import com.zeeriz.fleetai.domain.model.FuelCheckResult
+import com.zeeriz.fleetai.domain.model.FuelSummary
 import com.zeeriz.fleetai.domain.model.LoginRequest
 import com.zeeriz.fleetai.domain.model.MaintenancePage
 import com.zeeriz.fleetai.domain.model.MaintenanceSummary
@@ -104,6 +108,15 @@ class FleetRepository(
 
     suspend fun maintenanceHistory(kind: String?, offset: Int, limit: Int = 50): ApiResult<MaintenancePage> =
         fetch("history_${kind ?: "all"}_$offset", MaintenancePage.serializer()) { api().maintenanceHistory(kind, limit, offset) }
+
+    suspend fun fuelSummary(days: Int): ApiResult<FuelSummary> =
+        fetch("fuel_summary_$days", FuelSummary.serializer()) { api().fuelSummary(days) }
+
+    suspend fun fuelAnomalies(days: Int): ApiResult<FuelAnomalies> =
+        fetch("fuel_anomalies_$days", FuelAnomalies.serializer()) { api().fuelAnomalies(days) }
+
+    suspend fun fuelCheck(vehicleId: Int, distanceKm: Double, litres: Double): ApiResult<FuelCheckResult> =
+        send { api().fuelCheck(FuelCheckRequest(vehicleId, distanceKm, litres)) }
 
     /** Writes are never served from the cache: they either reach the server or fail. */
     suspend fun predict(id: Int): ApiResult<Prediction> = send { api().predict(id) }

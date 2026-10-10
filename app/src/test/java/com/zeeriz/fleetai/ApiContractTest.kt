@@ -2,6 +2,8 @@ package com.zeeriz.fleetai
 
 import com.zeeriz.fleetai.data.remote.FleetJson
 import com.zeeriz.fleetai.domain.model.Dashboard
+import com.zeeriz.fleetai.domain.model.FuelAnomalies
+import com.zeeriz.fleetai.domain.model.FuelSummary
 import com.zeeriz.fleetai.domain.model.MaintenancePage
 import com.zeeriz.fleetai.domain.model.MaintenanceSummary
 import com.zeeriz.fleetai.domain.model.ScheduleItem
@@ -71,5 +73,15 @@ class ApiContractTest {
         assertEquals(summary.overdue, overdue.size)
         assertTrue(overdue.all { it.status == "overdue" && (it.overduePct ?: 0) >= 0 })
         assertTrue(history.total > history.items.size && history.items.isNotEmpty())
+    }
+
+    @Test
+    fun fuelParses() {
+        val s = FleetJson.decodeFromString(FuelSummary.serializer(), fixture("fuel_summary_30.json"))
+        val a = FleetJson.decodeFromString(FuelAnomalies.serializer(), fixture("fuel_anomalies_90.json"))
+        assertEquals(30, s.days)
+        assertTrue(s.totals.cost > 0 && s.byVehicle.size == 58 && s.byVehicle.all { it.vehicleId != null })
+        assertTrue(s.byDepot.size == 3 && s.monthly.isNotEmpty() && s.priceMonthly.isNotEmpty())
+        assertTrue(a.count > 0 && a.items.all { it.actualKmPerL < it.baselineKmPerL && it.explanation.isNotBlank() })
     }
 }
