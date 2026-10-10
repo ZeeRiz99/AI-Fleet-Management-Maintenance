@@ -13,6 +13,7 @@ import androidx.navigation.navArgument
 import com.zeeriz.fleetai.ui.screens.DashboardActions
 import com.zeeriz.fleetai.ui.screens.DashboardScreen
 import com.zeeriz.fleetai.ui.screens.LoginScreen
+import com.zeeriz.fleetai.ui.screens.MaintenanceScreen
 import com.zeeriz.fleetai.ui.screens.PlaceholderScreen
 import com.zeeriz.fleetai.ui.screens.ProfileScreen
 import com.zeeriz.fleetai.ui.screens.VehicleDetailScreen
@@ -46,7 +47,7 @@ fun FleetNavHost(
 
         composable(Routes.HOME) { DashboardScreen(dashboardActions) }
         composable(Routes.VEHICLES) { VehiclesScreen(onOpenVehicle = { navController.navigate(Routes.vehicleDetail(it)) }) }
-        composable(Routes.MAINTENANCE) { PlaceholderScreen("Maintenance", phase = 5) }
+        composable(Routes.MAINTENANCE) { MaintenanceScreen(onOpenVehicle = { navController.navigate(Routes.vehicleDetail(it)) }) }
         composable(Routes.ALERTS) { PlaceholderScreen("Alerts", phase = 8) }
         composable(Routes.PROFILE) { ProfileScreen() }
 

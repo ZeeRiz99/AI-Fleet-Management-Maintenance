@@ -10,6 +10,9 @@ import com.zeeriz.fleetai.data.remote.FleetJson
 import com.zeeriz.fleetai.data.remote.toFailure
 import com.zeeriz.fleetai.domain.model.Dashboard
 import com.zeeriz.fleetai.domain.model.LoginRequest
+import com.zeeriz.fleetai.domain.model.MaintenancePage
+import com.zeeriz.fleetai.domain.model.MaintenanceSummary
+import com.zeeriz.fleetai.domain.model.ScheduleItem
 import com.zeeriz.fleetai.domain.model.Prediction
 import com.zeeriz.fleetai.domain.model.ServiceRecordRequest
 import com.zeeriz.fleetai.domain.model.ServiceRecordResult
@@ -92,6 +95,15 @@ class FleetRepository(
 
     suspend fun vehicle(id: Int): ApiResult<VehicleDetail> =
         fetch("vehicle_$id", VehicleDetail.serializer()) { api().vehicle(id) }
+
+    suspend fun maintenanceSummary(): ApiResult<MaintenanceSummary> =
+        fetch("maintenance_summary", MaintenanceSummary.serializer()) { api().maintenanceSummary() }
+
+    suspend fun maintenanceSchedule(status: String): ApiResult<List<ScheduleItem>> =
+        fetch("schedule_$status", ListSerializer(ScheduleItem.serializer())) { api().maintenanceSchedule(status) }
+
+    suspend fun maintenanceHistory(kind: String?, offset: Int, limit: Int = 50): ApiResult<MaintenancePage> =
+        fetch("history_${kind ?: "all"}_$offset", MaintenancePage.serializer()) { api().maintenanceHistory(kind, limit, offset) }
 
     /** Writes are never served from the cache: they either reach the server or fail. */
     suspend fun predict(id: Int): ApiResult<Prediction> = send { api().predict(id) }

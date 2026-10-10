@@ -2,6 +2,9 @@ package com.zeeriz.fleetai
 
 import com.zeeriz.fleetai.data.remote.FleetJson
 import com.zeeriz.fleetai.domain.model.Dashboard
+import com.zeeriz.fleetai.domain.model.MaintenancePage
+import com.zeeriz.fleetai.domain.model.MaintenanceSummary
+import com.zeeriz.fleetai.domain.model.ScheduleItem
 import com.zeeriz.fleetai.domain.model.VehicleDetail
 import com.zeeriz.fleetai.domain.model.VehicleSummary
 import com.zeeriz.fleetai.presentation.VehicleFilters
@@ -58,5 +61,15 @@ class ApiContractTest {
         val reg = vehicles.first().registration
         assertEquals(listOf(reg), vehicles.applyFilters(VehicleFilters(query = reg.lowercase())).map { it.registration })
         assertTrue(vehicles.applyFilters(VehicleFilters(query = "zzz-no-match")).isEmpty())
+    }
+
+    @Test
+    fun maintenanceParses() {
+        val summary = FleetJson.decodeFromString(MaintenanceSummary.serializer(), fixture("maintenance_summary.json"))
+        val overdue = FleetJson.decodeFromString(ListSerializer(ScheduleItem.serializer()), fixture("schedule_overdue.json"))
+        val history = FleetJson.decodeFromString(MaintenancePage.serializer(), fixture("history.json"))
+        assertEquals(summary.overdue, overdue.size)
+        assertTrue(overdue.all { it.status == "overdue" && (it.overduePct ?: 0) >= 0 })
+        assertTrue(history.total > history.items.size && history.items.isNotEmpty())
     }
 }

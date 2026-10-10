@@ -285,3 +285,19 @@ data class ServiceRecordRequest(val vehicleId: Int, val service: String, val cos
 
 @Serializable
 data class ServiceRecordResult(val record: MaintenanceRecord, val before: Prediction, val after: Prediction)
+
+// ----------------------------------------------------------------------------- maintenance
+@Serializable
+data class MaintenanceSummary(
+    val overdue: Int = 0,
+    val dueSoon: Int = 0,
+    val vehiclesWithOverdue: Int = 0,
+    @SerialName("completed_30d") val completed30d: Int = 0,
+    @SerialName("spend_30d") val spend30d: Double = 0.0,
+    @SerialName("spend_365d") val spend365d: Double = 0.0,
+    @SerialName("breakdowns_365d") val breakdowns365d: Int = 0,
+    val breakdownShare: Double = 0.0,
+)
+
+@Serializable
+data class MaintenancePage(val total: Int, val items: List<MaintenanceRecord>)

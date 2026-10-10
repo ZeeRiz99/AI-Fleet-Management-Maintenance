@@ -1,6 +1,9 @@
 package com.zeeriz.fleetai.data.remote
 
 import com.zeeriz.fleetai.domain.model.Dashboard
+import com.zeeriz.fleetai.domain.model.MaintenancePage
+import com.zeeriz.fleetai.domain.model.MaintenanceSummary
+import com.zeeriz.fleetai.domain.model.ScheduleItem
 import com.zeeriz.fleetai.domain.model.Prediction
 import com.zeeriz.fleetai.domain.model.ServiceRecordRequest
 import com.zeeriz.fleetai.domain.model.ServiceRecordResult
@@ -14,6 +17,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 /** REST endpoints of the FastAPI backend (api/main.py). */
 interface FleetApi {
@@ -35,6 +39,21 @@ interface FleetApi {
 
     @GET("api/v1/vehicles/{id}")
     suspend fun vehicle(@Path("id") id: Int): VehicleDetail
+
+    @GET("api/v1/maintenance/summary")
+    suspend fun maintenanceSummary(): MaintenanceSummary
+
+    /** status: overdue | due_soon | ok | unknown */
+    @GET("api/v1/maintenance/schedule")
+    suspend fun maintenanceSchedule(@Query("status") status: String, @Query("limit") limit: Int = 600): List<ScheduleItem>
+
+    /** kind: Preventive | Breakdown | null for both; newest first */
+    @GET("api/v1/maintenance/history")
+    suspend fun maintenanceHistory(
+        @Query("kind") kind: String? = null,
+        @Query("limit") limit: Int = 50,
+        @Query("offset") offset: Int = 0,
+    ): MaintenancePage
 
     /** Re-runs the XGBoost model + SHAP on current data and returns the explained prediction. */
     @POST("api/v1/ai/predict/{id}")
