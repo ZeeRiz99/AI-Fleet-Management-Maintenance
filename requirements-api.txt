@@ -1,0 +1,12 @@
+# Packages for the hosted REST API only (render.yaml). The dashboard uses requirements.txt.
+# Pinned to the versions the model in models/risk_model.joblib was trained and tested with.
+pandas==3.0.6
+numpy==2.5.3
+scipy==1.18.1
+scikit-learn==1.9.1
+xgboost==3.4.1
+shap==0.52.0
+joblib==1.6.0
+fastapi==0.143.0
+uvicorn==0.54.0
+PyJWT==2.15.1

@@ -1,0 +1,19 @@
+# Render Blueprint for the FleetAI REST API (used by the Android app).
+# Render dashboard -> New -> Blueprint -> pick this repo. Free plan: sleeps after ~15 min idle,
+# first request after that takes about a minute while the model re-scores the fleet.
+services:
+  - type: web
+    name: fleetai-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements-api.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.14.6
+      - key: FLEET_API_SECRET          # JWT signing key; stays fixed across restarts so logins survive a wake-up
+        generateValue: true
+      # Login is the demo admin / fleet123 unless FLEET_ADMIN_PASSWORD is set in the Render dashboard
+      # (never commit a real password here: this repo is public).
