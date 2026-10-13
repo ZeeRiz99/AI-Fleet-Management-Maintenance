@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The demo FastAPI server runs over plain HTTP on the laptop (emulator: 10.0.2.2, phone: LAN IP).
+     For production, serve the API over HTTPS and remove this cleartext permission. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
