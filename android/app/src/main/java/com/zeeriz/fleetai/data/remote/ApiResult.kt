@@ -1,5 +1,6 @@
 package com.zeeriz.fleetai.data.remote
 
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -17,8 +18,24 @@ sealed interface ApiResult<out T> {
     enum class Kind { NETWORK, UNAUTHORIZED, NOT_FOUND, SERVER, INVALID }
 }
 
-/** Turns exceptions from Retrofit/OkHttp into readable failures (never leaks stack traces to the UI). */
-fun Throwable.toFailure(serverUrl: String): ApiResult.Failure = when (this) {
+/**
+ * Turns exceptions from Retrofit/OkHttp into readable failures (never leaks stack traces to the UI).
+ * [fromGitHub] = the app is reading the published snapshot, so network advice is about internet, not the laptop.
+ */
+fun Throwable.toFailure(serverUrl: String, fromGitHub: Boolean = false): ApiResult.Failure = when {
+    this is LiveServerRequiredException -> ApiResult.Failure(message.orEmpty(), ApiResult.Kind.INVALID)
+    fromGitHub -> when (this) {
+        is HttpException -> if (code() == 404) ApiResult.Failure("This item is not in the published data.", ApiResult.Kind.NOT_FOUND)
+        else ApiResult.Failure("GitHub returned an error (${code()}). Try again in a minute.", ApiResult.Kind.SERVER)
+        is IOException -> ApiResult.Failure("Can't load the fleet data. Check your internet connection and pull down to retry.", ApiResult.Kind.NETWORK)
+        is SerializationException -> ApiResult.Failure("The published data could not be read.", ApiResult.Kind.SERVER)
+        is IllegalArgumentException -> ApiResult.Failure(message ?: "Some values are not valid.", ApiResult.Kind.INVALID)
+        else -> ApiResult.Failure("The published data could not be read.", ApiResult.Kind.SERVER)
+    }
+    else -> serverFailure(serverUrl)
+}
+
+private fun Throwable.serverFailure(serverUrl: String): ApiResult.Failure = when (this) {
     is HttpException -> {
         val detail = errorDetail(this)
         when (code()) {

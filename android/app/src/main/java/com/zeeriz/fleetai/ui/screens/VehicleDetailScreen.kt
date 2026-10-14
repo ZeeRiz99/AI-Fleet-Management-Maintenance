@@ -72,6 +72,7 @@ import kotlin.math.abs
 fun VehicleDetailScreen(onBack: () -> Unit, viewModel: VehicleDetailViewModel = viewModel(factory = VehicleDetailViewModel.Factory)) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val busy by viewModel.busy.collectAsStateWithLifecycle()
+    val liveServer by viewModel.liveServer.collectAsStateWithLifecycle()
     val event by viewModel.event.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     var confirmService by remember { mutableStateOf<String?>(null) }
@@ -98,6 +99,7 @@ fun VehicleDetailScreen(onBack: () -> Unit, viewModel: VehicleDetailViewModel = 
                     AiPredictionCard(
                         p = v.prediction,
                         busy = busy,
+                        liveServer = liveServer,
                         onRerun = viewModel::rerunModel,
                         onMarkDone = { confirmService = v.prediction.recommendation.service },
                     )
@@ -175,7 +177,7 @@ private fun HeaderCard(v: VehicleDetail) {
 }
 
 @Composable
-private fun AiPredictionCard(p: Prediction, busy: Boolean, onRerun: () -> Unit, onMarkDone: () -> Unit) {
+private fun AiPredictionCard(p: Prediction, busy: Boolean, liveServer: Boolean, onRerun: () -> Unit, onMarkDone: () -> Unit) {
     val tone = StatusMapping.riskTone(p.riskTier)
     FleetCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -245,14 +247,23 @@ private fun AiPredictionCard(p: Prediction, busy: Boolean, onRerun: () -> Unit, 
         }
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Button(onClick = onMarkDone, enabled = !busy, modifier = Modifier.weight(1f)) {
+            Button(onClick = onMarkDone, enabled = !busy && liveServer, modifier = Modifier.weight(1f)) {
                 Text("Mark service done", maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            OutlinedButton(onClick = onRerun, enabled = !busy) {
+            OutlinedButton(onClick = onRerun, enabled = !busy && liveServer) {
                 Icon(Icons.Filled.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text("Re-run AI")
             }
+        }
+        if (!liveServer) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Recording a service and re-running the model need the live AI server (Profile > Data source). " +
+                    "The risk shown here is the model's real output, published with the data.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
         Spacer(Modifier.height(8.dp))
         Text("${p.model} · scored ${p.scoredAt.replace('T', ' ')}", style = MaterialTheme.typography.labelSmall,

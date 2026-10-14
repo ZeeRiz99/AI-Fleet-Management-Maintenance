@@ -170,3 +170,25 @@ def test_recording_a_service_reruns_the_model_and_reset_restores(client, auth):
 def test_model_info(client, auth):
     m = client.get("/api/v1/ai/model", headers=auth).json()
     assert m["risk_model"]["metrics"][0]["model"] == "XGBoost" and m["explainability"] and "simulated" in m["data_note"]
+
+
+def test_published_snapshot_matches_the_api(client, auth):
+    """static-api/v1 (read by the Android app's GitHub mode) must be the current API output: re-run
+    `python -m api.export_static` after retraining the model or regenerating the data."""
+    import json
+    snap = ROOT / "static-api" / "v1"
+    if not snap.exists():
+        pytest.skip("no published snapshot")
+    assert client.post("/api/v1/admin/reset-demo", headers=auth).status_code == 200
+    load = lambda rel: json.loads((snap / rel).read_text(encoding="utf-8"))
+    live = client.get("/api/v1/vehicles", headers=auth).json()
+    assert load("vehicles.json") == live, "snapshot is stale: run python -m api.export_static"
+    assert all((snap / "vehicles" / f"{v['id']}.json").exists() for v in live)
+    drivers = client.get("/api/v1/drivers", headers=auth).json()["items"]
+    assert all((snap / "drivers" / f"{d['id']}.json").exists() for d in drivers)
+    manifest = load("manifest.json")
+    assert manifest["vehicles"] == len(live) and manifest["as_of"] == C.AS_OF_DATE
+    rule = json.loads((ROOT / "reports" / "anomaly_rule.json").read_text())
+    baselines = load("fuel/baselines.json")
+    assert (baselines["threshold"], baselines["window"]) == (rule["threshold"], rule["window"])
+    assert len(baselines["vehicles"]) == len(live)

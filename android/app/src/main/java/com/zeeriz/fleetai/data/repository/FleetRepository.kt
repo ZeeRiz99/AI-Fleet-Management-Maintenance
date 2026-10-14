@@ -1,6 +1,7 @@
 package com.zeeriz.fleetai.data.repository
 
 import com.zeeriz.fleetai.data.local.AppSettings
+import com.zeeriz.fleetai.data.local.DataSource
 import com.zeeriz.fleetai.data.local.ResponseCache
 import com.zeeriz.fleetai.data.local.SettingsStore
 import com.zeeriz.fleetai.data.remote.ApiProvider
@@ -46,12 +47,14 @@ class Session {
 }
 
 /**
- * Single entry point to the backend. Successful responses are cached; when the server cannot be reached,
- * the last cached copy is returned and flagged `fromCache` so screens can show an "offline" banner.
+ * Single entry point to the fleet data: the live FastAPI server or the read-only snapshot published on GitHub
+ * (Profile > Data source). Successful responses are cached; when the source cannot be reached, the last cached
+ * copy is returned and flagged `fromCache` so screens can show an "offline" banner.
  */
 class FleetRepository(
     private val settings: SettingsStore,
     private val apiProvider: ApiProvider,
+    private val gitHub: FleetApi,
     private val cache: ResponseCache,
     private val session: Session,
 ) {
@@ -69,7 +72,20 @@ class FleetRepository(
         return session.snapshot
     }
 
-    private suspend fun api(): FleetApi = apiProvider.api(currentSession().serverUrl)
+    private suspend fun api(): FleetApi =
+        currentSession().let { if (it.dataSource == DataSource.GITHUB) gitHub else apiProvider.api(it.serverUrl) }
+
+    private suspend fun Throwable.asFailure(): ApiResult.Failure =
+        currentSession().let { toFailure(it.serverUrl, fromGitHub = it.dataSource == DataSource.GITHUB) }
+
+    /** Switches between the GitHub snapshot and the live server; cached data of the other source is dropped. */
+    suspend fun setDataSource(source: DataSource) {
+        if (currentSession().dataSource == source) return
+        settings.setDataSource(source)
+        cache.clear()
+        session.snapshot = session.snapshot.copy(dataSource = source)
+        _unreadAlerts.value = 0
+    }
 
     suspend fun login(username: String, password: String, serverUrl: String): ApiResult<User> {
         val url = serverUrl.trim().trimEnd('/')
@@ -78,6 +94,7 @@ class FleetRepository(
         return try {
             val token = apiProvider.api(url).login(LoginRequest(username.trim(), password))
             settings.saveSession(token.accessToken, token.user.username, token.user.fullName)
+            setDataSource(DataSource.SERVER)
             session.snapshot = session.snapshot.copy(
                 token = token.accessToken, username = token.user.username, fullName = token.user.fullName,
             )
@@ -163,19 +180,20 @@ class FleetRepository(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
-            e.toFailure(currentSession().serverUrl).also { if (it.kind == ApiResult.Kind.UNAUTHORIZED) logout() }
+            e.asFailure().also { if (it.kind == ApiResult.Kind.UNAUTHORIZED) logout() }
         }
 
     /** Calls the API, caches the result, falls back to the cache when offline, signs out on 401. */
-    private suspend fun <T> fetch(key: String, serializer: KSerializer<T>, call: suspend () -> T): ApiResult<T> =
-        try {
+    private suspend fun <T> fetch(name: String, serializer: KSerializer<T>, call: suspend () -> T): ApiResult<T> {
+        val key = "${currentSession().dataSource.name.lowercase()}_$name"
+        return try {
             val data = call()
             cache.put(key, FleetJson.encodeToString(serializer, data))
             ApiResult.Success(data)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Throwable) {
-            val failure = e.toFailure(currentSession().serverUrl)
+            val failure = e.asFailure()
             when (failure.kind) {
                 ApiResult.Kind.UNAUTHORIZED -> {
                     logout()
@@ -188,4 +206,5 @@ class FleetRepository(
                 else -> failure
             }
         }
+    }
 }

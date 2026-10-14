@@ -5,12 +5,17 @@ import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.zeeriz.fleetai.data.local.DataSource
+import com.zeeriz.fleetai.data.local.SettingsStore
 import com.zeeriz.fleetai.data.remote.ApiResult
 import com.zeeriz.fleetai.data.repository.FleetRepository
 import com.zeeriz.fleetai.domain.model.ServiceRecordResult
 import com.zeeriz.fleetai.domain.model.VehicleDetail
 import com.zeeriz.fleetai.navigation.Routes
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -23,7 +28,11 @@ sealed interface VehicleEvent {
     data class Failed(val message: String) : VehicleEvent
 }
 
-class VehicleDetailViewModel(val vehicleId: Int, private val repository: FleetRepository) : ViewModel() {
+class VehicleDetailViewModel(val vehicleId: Int, private val repository: FleetRepository, settings: SettingsStore) : ViewModel() {
+    /** Recording a service / re-running the model needs the live server (not the read-only GitHub data). */
+    val liveServer: StateFlow<Boolean> = settings.settings.map { it.dataSource == DataSource.SERVER }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
     private val _state = MutableStateFlow(ScreenState<VehicleDetail>())
     val state: StateFlow<ScreenState<VehicleDetail>> = _state.asStateFlow()
 
@@ -82,7 +91,7 @@ class VehicleDetailViewModel(val vehicleId: Int, private val repository: FleetRe
         val Factory = viewModelFactory {
             initializer {
                 val id = checkNotNull(createSavedStateHandle().get<Int>(Routes.VEHICLE_ID)) { "vehicleId missing" }
-                VehicleDetailViewModel(id, container.repository)
+                VehicleDetailViewModel(id, container.repository, container.settings)
             }
         }
     }

@@ -27,6 +27,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -92,7 +93,11 @@ fun LoginScreen(viewModel: LoginViewModel = viewModel(factory = LoginViewModel.F
             Modifier.fillMaxWidth().padding(20.dp).widthIn(max = 520.dp).align(Alignment.CenterHorizontally),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text("Sign in", style = MaterialTheme.typography.titleLarge)
+            Column {
+                Text("Sign in", style = MaterialTheme.typography.titleLarge)
+                Text("to the live AI server (record services, re-run the model)", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             FleetCard {
                 OutlinedTextField(
                     value = state.username,
@@ -152,6 +157,14 @@ fun LoginScreen(viewModel: LoginViewModel = viewModel(factory = LoginViewModel.F
                     }
                 }
             }
+            OutlinedButton(onClick = viewModel::useGitHubData, modifier = Modifier.fillMaxWidth().height(48.dp)) {
+                Text("Explore demo data (no server needed)")
+            }
+            Text(
+                "Opens the published fleet data and AI results from GitHub: no account or laptop server required.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             if (BuildConfig.DEBUG) {
                 Text(
                     "Local demo account: admin / fleet123 (set FLEET_ADMIN_PASSWORD on the server for real use).",

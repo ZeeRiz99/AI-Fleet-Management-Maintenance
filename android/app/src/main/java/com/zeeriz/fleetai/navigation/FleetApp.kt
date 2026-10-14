@@ -28,18 +28,19 @@ fun NavHostController.navigateToTab(route: String) {
 @Composable
 fun FleetApp(container: AppContainer, settings: AppSettings) {
     val navController = rememberNavController()
-    val startDestination = remember { if (settings.isLoggedIn) Routes.HOME else Routes.LOGIN }
+    val startDestination = remember { if (settings.canBrowse) Routes.HOME else Routes.LOGIN }
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
     val unreadAlerts by container.repository.unreadAlerts.collectAsStateWithLifecycle()
     val showBottomBar = TopLevelDestination.entries.any { it.route == currentRoute }
 
-    // Session changes (sign-in, sign-out, expired token) move between the login screen and the app.
-    LaunchedEffect(settings.isLoggedIn) {
+    // Session / data-source changes (sign-in, sign-out, expired token, switching to the live server without an
+    // account, picking GitHub data on the login screen) move between the login screen and the app.
+    LaunchedEffect(settings.canBrowse) {
         val route = navController.currentDestination?.route ?: return@LaunchedEffect
-        if (!settings.isLoggedIn && route != Routes.LOGIN) {
+        if (!settings.canBrowse && route != Routes.LOGIN) {
             navController.navigate(Routes.LOGIN) { popUpTo(navController.graph.id) { inclusive = true } }
-        } else if (settings.isLoggedIn && route == Routes.LOGIN) {
+        } else if (settings.canBrowse && route == Routes.LOGIN) {
             navController.navigate(Routes.HOME) { popUpTo(Routes.LOGIN) { inclusive = true } }
         }
     }

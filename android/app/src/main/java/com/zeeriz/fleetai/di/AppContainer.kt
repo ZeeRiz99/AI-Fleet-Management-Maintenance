@@ -1,9 +1,12 @@
 package com.zeeriz.fleetai.di
 
 import android.content.Context
+import com.zeeriz.fleetai.BuildConfig
+import com.zeeriz.fleetai.data.local.LocalAlertReads
 import com.zeeriz.fleetai.data.local.ResponseCache
 import com.zeeriz.fleetai.data.local.SettingsStore
 import com.zeeriz.fleetai.data.remote.ApiProvider
+import com.zeeriz.fleetai.data.remote.GitHubFleetApi
 import com.zeeriz.fleetai.data.repository.FleetRepository
 import com.zeeriz.fleetai.data.repository.Session
 import kotlinx.coroutines.CoroutineScope
@@ -23,6 +26,7 @@ class AppContainer(context: Context) {
     val repository = FleetRepository(
         settings = settings,
         apiProvider = ApiProvider(tokenProvider = { session.snapshot.token }),
+        gitHub = GitHubFleetApi.create(BuildConfig.STATIC_DATA_URL, LocalAlertReads(appContext)),
         cache = ResponseCache(appContext),
         session = session,
     )

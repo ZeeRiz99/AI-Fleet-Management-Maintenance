@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.zeeriz.fleetai.data.local.AppSettings
+import com.zeeriz.fleetai.data.local.DataSource
 import com.zeeriz.fleetai.data.local.SettingsStore
 import com.zeeriz.fleetai.data.local.ThemeMode
 import com.zeeriz.fleetai.data.remote.ApiResult
@@ -22,7 +23,7 @@ import kotlinx.coroutines.launch
 /** Result of "Test connection" in Profile > Server. */
 data class ConnectionStatus(val checking: Boolean = false, val ok: Boolean? = null, val text: String? = null)
 
-/** Profile / Settings: account, theme, server address + connection test, AI model info, demo reset, sign-out. */
+/** Profile / Settings: account, theme, data source, server address + connection test, AI model info, reset, sign-out. */
 class SettingsViewModel(private val store: SettingsStore, private val repository: FleetRepository) : ViewModel() {
 
     val settings: StateFlow<AppSettings> =
@@ -53,6 +54,15 @@ class SettingsViewModel(private val store: SettingsStore, private val repository
         viewModelScope.launch { store.setThemeMode(mode) }
     }
 
+    /** GitHub snapshot <-> live server. Choosing the live server without a session shows the sign-in screen. */
+    fun setDataSource(source: DataSource) {
+        viewModelScope.launch {
+            repository.setDataSource(source)
+            _connection.value = ConnectionStatus()
+            loadModel()
+        }
+    }
+
     fun setServerUrl(url: String) {
         viewModelScope.launch {
             store.setServerUrl(url)
@@ -63,10 +73,12 @@ class SettingsViewModel(private val store: SettingsStore, private val repository
     fun testConnection() {
         _connection.value = ConnectionStatus(checking = true)
         viewModelScope.launch {
+            val fromGitHub = settings.value.dataSource == DataSource.GITHUB
             _connection.value = when (val r = repository.health()) {
                 is ApiResult.Success -> ConnectionStatus(
                     ok = r.data.status == "ok",
-                    text = "Connected · API ${r.data.version} · ${r.data.vehicles} vehicles · data as of ${Format.date(r.data.asOf)}",
+                    text = (if (fromGitHub) "GitHub data reachable" else "Connected · API ${r.data.version}") +
+                        " · ${r.data.vehicles} vehicles · data as of ${Format.date(r.data.asOf)}",
                 )
                 is ApiResult.Failure -> ConnectionStatus(ok = false, text = r.message)
             }
@@ -77,7 +89,8 @@ class SettingsViewModel(private val store: SettingsStore, private val repository
         _resetting.value = true
         viewModelScope.launch {
             _message.value = when (val r = repository.resetDemo()) {
-                is ApiResult.Success -> "Demo data restored (${r.data.vehicles} vehicles re-scored). Pull down on other screens to refresh."
+                is ApiResult.Success -> if (settings.value.dataSource == DataSource.GITHUB) "Changes on this phone cleared. Pull down on other screens to refresh."
+                else "Demo data restored (${r.data.vehicles} vehicles re-scored). Pull down on other screens to refresh."
                 is ApiResult.Failure -> r.message
             }
             _resetting.value = false

@@ -1,0 +1,86 @@
+[
+ {
+  "request": {
+   "vehicle_id": 46,
+   "distance_km": 200,
+   "fuel_litres": 45
+  },
+  "result": {
+   "vehicle_id": 46,
+   "registration": "BAB-21-6978",
+   "abnormal": true,
+   "verdict": "Abnormal",
+   "ratio": 0.512,
+   "threshold": 0.81,
+   "baseline_km_per_l": 8.68,
+   "actual_km_per_l": 4.44,
+   "expected_litres": 23.1,
+   "excess_litres": 21.9,
+   "excess_cost": 8787.0,
+   "explanation": "4.44 km/l is only 51% of this vehicle's normal 8.68 km/l. About 21.9 L (Rs 8,787) more than expected - check for a leak, theft or a wrong meter reading."
+  }
+ },
+ {
+  "request": {
+   "vehicle_id": 46,
+   "distance_km": 200,
+   "fuel_litres": 22
+  },
+  "result": {
+   "vehicle_id": 46,
+   "registration": "BAB-21-6978",
+   "abnormal": false,
+   "verdict": "Normal",
+   "ratio": 1.048,
+   "threshold": 0.81,
+   "baseline_km_per_l": 8.68,
+   "actual_km_per_l": 9.09,
+   "expected_litres": 23.1,
+   "excess_litres": 0.0,
+   "excess_cost": 0.0,
+   "explanation": "9.09 km/l is 105% of this vehicle's usual 8.68 km/l (flagged only below 81%)."
+  }
+ },
+ {
+  "request": {
+   "vehicle_id": 1,
+   "distance_km": 350.5,
+   "fuel_litres": 38.2
+  },
+  "result": {
+   "vehicle_id": 1,
+   "registration": "LEA-20-1335",
+   "abnormal": false,
+   "verdict": "Normal",
+   "ratio": 1.089,
+   "threshold": 0.81,
+   "baseline_km_per_l": 8.42,
+   "actual_km_per_l": 9.18,
+   "expected_litres": 41.6,
+   "excess_litres": 0.0,
+   "excess_cost": 0.0,
+   "explanation": "9.18 km/l is 109% of this vehicle's usual 8.42 km/l (flagged only below 81%)."
+  }
+ },
+ {
+  "request": {
+   "vehicle_id": 30,
+   "distance_km": 120,
+   "fuel_litres": 40
+  },
+  "result": {
+   "vehicle_id": 30,
+   "registration": "ICT-21-8679",
+   "abnormal": true,
+   "verdict": "Abnormal",
+   "ratio": 0.326,
+   "threshold": 0.81,
+   "baseline_km_per_l": 9.19,
+   "actual_km_per_l": 3.0,
+   "expected_litres": 13.1,
+   "excess_litres": 26.9,
+   "excess_cost": 10787.0,
+   "explanation": "3.00 km/l is only 33% of this vehicle's normal 9.19 km/l. About 26.9 L (Rs 10,787) more than expected - check for a leak, theft or a wrong meter reading."
+  }
+ }
+]

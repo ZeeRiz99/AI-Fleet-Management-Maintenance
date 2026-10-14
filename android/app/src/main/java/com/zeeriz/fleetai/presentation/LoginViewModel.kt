@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.zeeriz.fleetai.data.local.DataSource
 import com.zeeriz.fleetai.data.local.SettingsStore
 import com.zeeriz.fleetai.data.remote.ApiResult
 import com.zeeriz.fleetai.data.repository.FleetRepository
@@ -50,6 +51,11 @@ class LoginViewModel(private val repository: FleetRepository, settings: Settings
                 is ApiResult.Failure -> _state.update { it.copy(loading = false, error = result.message) }
             }
         }
+    }
+
+    /** Browse the read-only GitHub data instead; the app opens without an account. */
+    fun useGitHubData() {
+        viewModelScope.launch { repository.setDataSource(DataSource.GITHUB) }
     }
 
     companion object {

@@ -11,3 +11,8 @@
 .cxx/
 *.apk
 *.aab
+
+# signing keys never go in the repo
+*.jks
+*.keystore
+*signing*.properties

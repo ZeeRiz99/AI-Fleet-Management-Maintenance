@@ -54,8 +54,9 @@ available during the build). Default Gemini model is `gemini-3.8-flash`; if Goog
 
 ## REST API (for the Android app)
 
-A FastAPI service in `api/` exposes the same data and models to the
-FleetAI Android app (separate project). Streamlit is not involved.
+A FastAPI service in `api/` exposes the same data and models to the **FleetAI Android app** (`android/`, see its
+[README](android/README.md); download the APK from
+[Releases](https://github.com/ZeeRiz99/AI-Fleet-Management-Maintenance/releases/latest)). Streamlit is not involved.
 
 ```powershell
 .venv\Scripts\python.exe -m uvicorn api.main:app --host 0.0.0.0 --port 8000   # docs: http://localhost:8000/docs
@@ -82,7 +83,14 @@ FleetAI Android app (separate project). Streamlit is not involved.
 | Admin | `POST /admin/reset-demo` |
 
 Risk scores come from the same `src/alerts.py` scoring (XGBoost + SHAP) as the dashboard; `tests/test_api.py`
-(14 tests) covers auth, every endpoint and the record-service → re-score loop.
+(15 tests) covers auth, every endpoint and the record-service → re-score loop.
+
+**Published snapshot for phones without a server.** Free API hosting now needs a card or a paid plan, so
+`python -m api.export_static` saves every read endpoint's real response as JSON in `static-api/v1/` (about 105 files,
+2 MB: dashboard, 58 vehicles with AI predictions and SHAP reasons, 24 drivers, maintenance, fuel, alerts, model
+info, per-vehicle fuel baselines). The Android app reads these from GitHub by default, so it works on any phone;
+writes that need the model (record a service → re-score) still need the live server. A test fails if the snapshot
+gets out of date: re-run the export after retraining or regenerating data, then commit `static-api/`.
 
 ## Project layout
 
@@ -98,7 +106,9 @@ Risk scores come from the same `src/alerts.py` scoring (XGBoost + SHAP) as the d
 | `src/agent.py` | assistant tools + offline/Claude chat |
 | `src/eda.py` | data-quality report -> `reports/data_quality.md` |
 | `app/streamlit_app.py` | dashboard |
-| `api/` | FastAPI backend for the Android app (`main.py` routes, `fleet.py` service, `schemas.py`, `security.py`) |
+| `api/` | FastAPI backend for the Android app (`main.py` routes, `fleet.py` service, `schemas.py`, `security.py`, `export_static.py`) |
+| `static-api/v1/` | read-only JSON snapshot of the API, read by the Android app's default "GitHub data" mode |
+| `android/` | FleetAI Android app (Kotlin, Jetpack Compose, MVVM) |
 | `tests/` | data integrity, no-leakage, label, model, alert and assistant tests |
 
 ## Data: hybrid, and what that means

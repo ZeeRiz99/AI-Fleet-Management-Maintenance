@@ -1,8 +1,18 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
 }
+
+// Release signing: local.properties (git-ignored) may point to a properties file kept OUTSIDE the repo with
+// storeFile / storePassword / keyAlias / keyPassword. Without it the release build is simply unsigned.
+val signingProps: Properties? = rootProject.file("local.properties").takeIf { it.exists() }
+    ?.let { f -> Properties().apply { f.inputStream().use(::load) } }
+    ?.getProperty("fleetai.signing")
+    ?.let { file(it) }?.takeIf { it.exists() }
+    ?.let { f -> Properties().apply { f.inputStream().use(::load) } }
 
 android {
     namespace = "com.zeeriz.fleetai"
@@ -22,6 +32,10 @@ android {
         // Default FastAPI address: 10.0.2.2 is the laptop as seen from the Android emulator.
         // A real phone on the same Wi-Fi uses http://<laptop-ip>:8000 (changeable in Profile > Server).
         buildConfigField("String", "DEFAULT_API_URL", "\"http://10.0.2.2:8000\"")
+        // Read-only API snapshot published in the repo (api/export_static.py); the default data source
+        buildConfigField("String", "STATIC_DATA_URL",
+            "\"https://raw.githubusercontent.com/ZeeRiz99/AI-Fleet-Management-Maintenance/main/static-api/v1/\"")
+        buildConfigField("String", "DEFAULT_DATA_SOURCE", "\"GITHUB\"")
         buildConfigField("String", "DASHBOARD_URL", "\"https://ai-fleet-management.streamlit.app/\"")
         buildConfigField("String", "REPO_URL", "\"https://github.com/ZeeRiz99/AI-Fleet-Management-Maintenance\"")
     }
@@ -31,8 +45,20 @@ android {
         buildConfig = true
     }
 
+    signingConfigs {
+        if (signingProps != null) {
+            create("release") {
+                storeFile = file(signingProps.getProperty("storeFile"))
+                storePassword = signingProps.getProperty("storePassword")
+                keyAlias = signingProps.getProperty("keyAlias")
+                keyPassword = signingProps.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

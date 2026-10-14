@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.zeeriz.fleetai.BuildConfig
+import com.zeeriz.fleetai.data.local.DataSource
 import com.zeeriz.fleetai.data.local.ThemeMode
 import com.zeeriz.fleetai.domain.model.ModelInfo
 import com.zeeriz.fleetai.presentation.SettingsViewModel
@@ -79,6 +80,7 @@ fun ProfileScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVie
     var confirmReset by remember { mutableStateOf(false) }
     LaunchedEffect(settings.serverUrl) { serverDraft = settings.serverUrl }
     LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); viewModel.consumeMessage() } }
+    val gitHub = settings.dataSource == DataSource.GITHUB
 
     FleetScaffold(title = "Profile", subtitle = "Account, settings and AI model", snackbarHostState = snackbar) { padding ->
         Column(
@@ -88,18 +90,18 @@ fun ProfileScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVie
             // ---------------------------------------------------------------- account
             FleetCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    val name = settings.fullName ?: settings.username ?: "?"
+                    val name = if (gitHub) "Demo viewer" else settings.fullName ?: settings.username ?: "?"
                     Box(Modifier.size(48.dp).clip(CircleShape).background(Tone.BRAND.container()), contentAlignment = Alignment.Center) {
                         Text(name.split(" ").take(2).joinToString("") { it.take(1).uppercase() },
                             style = MaterialTheme.typography.titleMedium, color = Tone.BRAND.onContainer())
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(settings.fullName ?: "Signed in", style = MaterialTheme.typography.titleMedium)
-                        Text(settings.username?.let { "@$it" } ?: "", style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(name.takeIf { it != "?" } ?: "Signed in", style = MaterialTheme.typography.titleMedium)
+                        Text(if (gitHub) "Read-only data from GitHub · no account needed" else settings.username?.let { "@$it" } ?: "",
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    if (settings.isLoggedIn) TextButton(onClick = { confirmSignOut = true }) { Text("Sign out") }
+                    if (!gitHub && settings.isLoggedIn) TextButton(onClick = { confirmSignOut = true }) { Text("Sign out") }
                 }
             }
 
@@ -119,33 +121,70 @@ fun ProfileScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVie
                 }
             }
 
-            // ---------------------------------------------------------------- server
-            SectionHeader("Server", subtitle = "FastAPI backend address")
+            // ---------------------------------------------------------------- data source
+            SectionHeader("Data source", subtitle = "Where the fleet data and AI results come from")
             FleetCard {
-                OutlinedTextField(
-                    value = serverDraft,
-                    onValueChange = { serverDraft = it },
-                    label = { Text("API base URL") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                    supportingText = { Text("Emulator: http://10.0.2.2:8000 · Phone (USB): http://localhost:8000 · Wi-Fi: http://<laptop-ip>:8000") },
-                    modifier = Modifier.fillMaxWidth(),
+                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                    listOf(DataSource.GITHUB to "GitHub data", DataSource.SERVER to "Live server").forEachIndexed { index, (source, label) ->
+                        SegmentedButton(
+                            selected = settings.dataSource == source,
+                            onClick = { viewModel.setDataSource(source) },
+                            shape = SegmentedButtonDefaults.itemShape(index = index, count = 2),
+                        ) { Text(label) }
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    if (gitHub) "Published snapshot of the API: real XGBoost risk scores, SHAP reasons and fleet data, readable on " +
+                        "any phone without a server. The fuel check runs on the phone. Recording a service and re-running the " +
+                        "model need the live server."
+                    else "The FastAPI backend: everything is live, including recording a service so the AI re-scores the vehicle. " +
+                        "Needs the server running and a sign-in.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedButton(
-                        onClick = { viewModel.setServerUrl(serverDraft) },
-                        enabled = serverDraft.isNotBlank() && serverDraft.trim().trimEnd('/') != settings.serverUrl,
-                    ) { Text("Save") }
+                if (gitHub) {
+                    Spacer(Modifier.height(10.dp))
                     Button(onClick = viewModel::testConnection, enabled = !connection.checking) {
                         if (connection.checking) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-                        else Text("Test connection")
+                        else Text("Check data connection")
                     }
-                    TextButton(onClick = { viewModel.setServerUrl(BuildConfig.DEFAULT_API_URL) }) { Text("Default") }
+                    connection.text?.let {
+                        Spacer(Modifier.height(10.dp))
+                        Banner(it, if (connection.ok == true) Tone.SUCCESS else Tone.CRITICAL)
+                    }
                 }
-                connection.text?.let {
-                    Spacer(Modifier.height(10.dp))
-                    Banner(it, if (connection.ok == true) Tone.SUCCESS else Tone.CRITICAL)
+            }
+
+            // ---------------------------------------------------------------- server
+            if (!gitHub) {
+                SectionHeader("Server", subtitle = "FastAPI backend address")
+                FleetCard {
+                    OutlinedTextField(
+                        value = serverDraft,
+                        onValueChange = { serverDraft = it },
+                        label = { Text("API base URL") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                        supportingText = { Text("Emulator: http://10.0.2.2:8000 · Phone (USB): http://localhost:8000 · Wi-Fi: http://<laptop-ip>:8000") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedButton(
+                            onClick = { viewModel.setServerUrl(serverDraft) },
+                            enabled = serverDraft.isNotBlank() && serverDraft.trim().trimEnd('/') != settings.serverUrl,
+                        ) { Text("Save") }
+                        Button(onClick = viewModel::testConnection, enabled = !connection.checking) {
+                            if (connection.checking) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                            else Text("Test connection")
+                        }
+                        TextButton(onClick = { viewModel.setServerUrl(BuildConfig.DEFAULT_API_URL) }) { Text("Default") }
+                    }
+                    connection.text?.let {
+                        Spacer(Modifier.height(10.dp))
+                        Banner(it, if (connection.ok == true) Tone.SUCCESS else Tone.CRITICAL)
+                    }
                 }
             }
 
@@ -165,7 +204,8 @@ fun ProfileScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVie
             SectionHeader("Demo data")
             FleetCard {
                 Text(
-                    "Services recorded from the app change the server's demo database and the AI re-scores those vehicles. " +
+                    if (gitHub) "The GitHub data never changes. Alerts you mark as read are remembered on this phone; reset clears them."
+                    else "Services recorded from the app change the server's demo database and the AI re-scores those vehicles. " +
                         "Reset restores the original data (admin only).",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -176,7 +216,7 @@ fun ProfileScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVie
                     else {
                         Icon(Icons.Filled.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Reset demo data")
+                        Text(if (gitHub) "Clear changes on this phone" else "Reset demo data")
                     }
                 }
             }
@@ -210,8 +250,11 @@ fun ProfileScreen(viewModel: SettingsViewModel = viewModel(factory = SettingsVie
     if (confirmReset) {
         AlertDialog(
             onDismissRequest = { confirmReset = false },
-            title = { Text("Reset demo data?") },
-            text = { Text("All services recorded from the app are removed and every vehicle is re-scored by the AI model.") },
+            title = { Text(if (gitHub) "Clear changes on this phone?" else "Reset demo data?") },
+            text = {
+                Text(if (gitHub) "Alerts you marked as read on this phone become unread again."
+                else "All services recorded from the app are removed and every vehicle is re-scored by the AI model.")
+            },
             confirmButton = { Button(onClick = { confirmReset = false; viewModel.resetDemo() }) { Text("Reset") } },
             dismissButton = { TextButton(onClick = { confirmReset = false }) { Text("Cancel") } },
         )

@@ -58,10 +58,17 @@ SQLite, not PostgreSQL. GPS/IoT is NOT in scope (future extension).
 ## REST API + Android app (Oct 2026)
 - `api/` FastAPI backend (routes under /api/v1, JWT auth, demo login admin/fleet123). Works on a runtime copy
   `data/runtime/fleet_api.db` (git-ignored); `POST /maintenance` records a service and re-scores via `alerts.score()`.
-  Run: `.venv\Scripts\python.exe -m uvicorn api.main:app --host 0.0.0.0 --port 8000`. 47 tests pass (14 API).
-- Android app: separate git repo `D:\Projects\Fleet Management Android` (Kotlin, Compose, MVVM, Retrofit). Phases 1-10
-  done, README written; NOT on GitHub yet (ask the user before creating a repo / pushing).
-  Build: JAVA_HOME = Android Studio jbr, ANDROID_HOME = D:\dev\AndroidStudio\Sdk, GRADLE_USER_HOME is the user env var
-  (D:\dev\AndroidStudio\.gradle; never point it elsewhere). Run `gradlew --stop` after builds: laptop has 7.8 GB RAM and
-  the emulator + Gradle together starve it. Real phone testing via `adb reverse tcp:8000 tcp:8000` + http://localhost:8000.
-- The API commits are local only until the user approves a push (a push to main redeploys Streamlit).
+  Run: `.venv\Scripts\python.exe -m uvicorn api.main:app --host 0.0.0.0 --port 8000`. 48 tests pass (15 API).
+- Android app lives in `android/` of THIS repo (merged from the old separate repo `D:\Projects\Fleet Management Android`
+  with history via git subtree; the old folder is stale, don't edit it). Kotlin, Compose, MVVM, Retrofit. 14 unit tests.
+  Build from `android/`: JAVA_HOME = Android Studio jbr, ANDROID_HOME = D:\dev\AndroidStudio\Sdk, GRADLE_USER_HOME is the
+  user env var (D:\dev\AndroidStudio\.gradle; never point it elsewhere). Run `gradlew --stop` after builds (7.8 GB RAM).
+  ASK THE USER BEFORE STARTING THE EMULATOR.
+- Hosting: Render needs a card, HF Spaces (Docker and now Gradio too) need PRO, user has no Azure student email.
+  So the app's default data source is **GitHub data**: `python -m api.export_static` writes real API responses to
+  `static-api/v1/` (~105 JSON files), read from raw.githubusercontent.com (BuildConfig.STATIC_DATA_URL). Writes
+  (record service / re-run model) need the live server and are refused with a message, never faked; the fuel check runs
+  on the phone via `domain/FuelRule.kt` (unit test proves identical results to the API). Re-export + commit after
+  retraining/regenerating data (`test_published_snapshot_matches_the_api` fails if stale). `render.yaml` and
+  `requirements-api.txt` are kept for a future paid/hosted API.
+- Pushes to main redeploy the Streamlit site; always ask before pushing.
