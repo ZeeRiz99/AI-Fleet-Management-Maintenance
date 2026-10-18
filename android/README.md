@@ -6,6 +6,22 @@ A fleet manager can see which vehicles are likely to break down in the next 30 d
 service and watch the real model re-score the vehicle, check fuel fill-ups for abnormal use, and work through alerts.
 Built for a Pakistan fleet: km, litres, PKR.
 
+## Screenshots
+
+<p>
+  <img src="docs/screenshots/01-dashboard.png" width="200" alt="Dashboard">
+  <img src="docs/screenshots/02-ai-prediction.png" width="200" alt="AI prediction with SHAP reasons">
+  <img src="docs/screenshots/03-maintenance.png" width="200" alt="Maintenance">
+</p>
+<p>
+  <img src="docs/screenshots/04-fuel-ai-check.png" width="200" alt="AI fuel-entry check">
+  <img src="docs/screenshots/05-driver.png" width="200" alt="Driver scores">
+  <img src="docs/screenshots/06-dark-mode.png" width="200" alt="Dark mode">
+</p>
+
+Dashboard · AI breakdown risk with SHAP reasons · maintenance · AI fuel check · driver scores · dark mode
+(real app on an Android emulator).
+
 ```
                               +-- GitHub data (default) -->  static-api/v1/*.json in this repo (read-only snapshot)
 Android app (Kotlin, Compose) |                                  ^ written by api/export_static.py from the API below

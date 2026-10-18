@@ -2,6 +2,15 @@
 
 **Live demo:** https://ai-fleet-management.streamlit.app/ (Streamlit Community Cloud; may take a minute to wake up)
 
+**Android app:** [download the APK](https://github.com/ZeeRiz99/AI-Fleet-Management-Maintenance/releases/latest) · [app README](android/README.md)
+
+<p>
+  <img src="android/docs/screenshots/01-dashboard.png" width="180" alt="Android dashboard">
+  <img src="android/docs/screenshots/02-ai-prediction.png" width="180" alt="AI prediction">
+  <img src="android/docs/screenshots/04-fuel-ai-check.png" width="180" alt="AI fuel check">
+  <img src="android/docs/screenshots/06-dark-mode.png" width="180" alt="Dark mode">
+</p>
+
 Predicts which vehicles are likely to break down in the next 30 days, explains why (SHAP), flags abnormal fuel use,
 and puts a rupee value on acting early. Built for a Pakistan fleet: km, litres, PKR.
 
