@@ -1,6 +1,7 @@
 """Offline keyword router: no API key, LLM budget used up, or an LLM error -> the SAME tools, chosen by keywords.
 Understands Roman Urdu and English driver/manager messages."""
 import re
+from datetime import timedelta
 
 import agent as legacy
 
@@ -36,6 +37,20 @@ def parse_fuel(text):
             "odometer_km": _num(odo.group(1)) if odo else None, "amount_pkr": _num(amount.group(1)) if amount else None}
 
 
+def parse_when(ctx, text):
+    """'kal subah' -> {'date': tomorrow, 'part': 'morning'}; in a booking context 'kal' means tomorrow."""
+    t, out = text.lower(), {}
+    days = (2 if re.search(r"\bparson\b|day after", t) else 1 if re.search(r"\bkal\b|tomorrow", t)
+            else 0 if re.search(r"\baaj\b|today", t) else None)
+    if days is not None:
+        out["date"] = (ctx.now + timedelta(days=days)).date().isoformat()
+    if re.search(r"subah|subha|savere|morning", t):
+        out["part"] = "morning"
+    elif re.search(r"dopahar|dopehar|dopher|shaam|sham\b|afternoon|evening", t):
+        out["part"] = "afternoon"
+    return out
+
+
 def _say(result):
     return result.get("message") or result.get("error") or "Maaf kijiye, ye samajh nahi aaya."
 
@@ -49,7 +64,7 @@ def driver(ctx, text):
     if re.search(r"accident|takkar|hadsa|emergency|madad|help me", t):
         return run("report_emergency", description=text)
     if re.search(r"\bslot|booking kar|book kar|workshop|appointment|waqt chahiye|time chahiye", t):
-        return run("find_service_slots")
+        return run("find_service_slots", **parse_when(ctx, t))
     if re.search(r"meri booking|my booking|bookings", t):
         return run("my_bookings")
     if re.search(r"score|driving kaisi|meri driving|rating", t):

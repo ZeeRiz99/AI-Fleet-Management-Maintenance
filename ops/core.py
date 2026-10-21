@@ -159,3 +159,16 @@ def run_tool(ctx, name, args):
 
 def pkr(x):
     return f"Rs {float(x):,.0f}"
+
+
+def maps_link(lat, lon):
+    return f"https://maps.google.com/?q={lat},{lon}"
+
+
+def recent(ctx, stamped, minutes):
+    """`stamped` ({..., "at": iso time}) if it is at most `minutes` old, else None."""
+    try:
+        age = ctx.now - datetime.fromisoformat(stamped["at"])
+    except (TypeError, KeyError, ValueError):
+        return None
+    return stamped if age.total_seconds() <= minutes * 60 else None

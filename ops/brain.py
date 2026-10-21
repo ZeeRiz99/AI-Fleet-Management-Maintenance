@@ -10,18 +10,20 @@ LangGraph flow:  guard -> identify -> (command | agent | offline) -> finalize
 * finalize  demo copy of manager alerts, chat history (without the demo copy)
 """
 import json
+import logging
 import re
 from datetime import datetime
 from typing import Optional, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
-from . import core, llm as LLM, registry as R, router
+from . import core, env, llm as LLM, registry as R, router
 from . import settings as S
 from . import store as ST
 from . import tools_driver, tools_manager  # noqa: F401  (registers the tools)
 from . import workshops as W
 
+log = logging.getLogger("fleetlog.brain")
 MAX_TOOL_ROUNDS = 6
 DEMO_HEADER = "— Demo: manager ko ye alert gaya —"
 HELP = ("👋 FleetLog AI — AI Fleet Log Assistant\n"
@@ -36,6 +38,7 @@ class State(TypedDict, total=False):
     reply: str
     mode: str
     chain: object
+    buttons: list
 
 
 def _system_prompt(ctx):
@@ -48,7 +51,8 @@ def _system_prompt(ctx):
         "Use ONLY tool results for facts and numbers; never invent data. Vehicle risk data is a simulated demo fleet "
         "scored as of 1 Jan 2026; say so when quoting risk or savings. "
         "Driver workflow: (1) understand the problem, (2) call report_issue (safety advice comes first in its "
-        "message), (3) offer find_service_slots, (4) book_service when the driver picks one, (5) confirm. "
+        "message), (3) offer find_service_slots (use its date/part filters for 'kal subah' etc. and show its list "
+        "as is), (4) book_service with the exact slot code of the slot the driver picked, (5) confirm. "
         "Fuel fill-ups -> log_fuel; shift start -> start_shift; accidents/emergencies -> report_emergency. "
         "A driver may only see their own vehicle; refuse other vehicles, costs and fleet-wide data. "
         "Chat formatting: plain text and • bullet lines; no markdown tables or headings. "
@@ -134,13 +138,16 @@ def agent(state):
                                                "parameters": t["parameters"]}} for t in core.tools_for(ctx.role)]
     messages = [{"role": "system", "content": _system_prompt(ctx)}, *_history(ctx),
                 {"role": "user", "content": state["text"]}]
+    done = []  # messages of tools already run this turn: never run them twice through the offline router
     try:
         for _ in range(MAX_TOOL_ROUNDS):
             msg = chain.chat(messages, tools)
             calls = msg.get("tool_calls") or []
             if not calls:
-                text = (msg.get("content") or "").strip()
-                return {"reply": text, "mode": f"llm:{chain.last_used}"} if text else {"mode": "offline"}
+                text = plain(msg.get("content") or "")
+                if text:
+                    return {"reply": text, "mode": f"llm:{chain.last_used}"}
+                break
             messages.append({"role": "assistant", "content": msg.get("content") or "", "tool_calls": calls})
             for c in calls:
                 fn = c.get("function", {})
@@ -149,10 +156,22 @@ def agent(state):
                 except json.JSONDecodeError:
                     args = {}
                 result = core.run_tool(ctx, fn.get("name"), args)
+                if result.get("ok") and result.get("message"):
+                    done.append(result["message"])
                 messages.append({"role": "tool", "tool_call_id": c.get("id", ""), "content": json.dumps(result, default=str)})
-    except LLM.LLMUnavailable:
-        return {"mode": "offline"}
+    except LLM.LLMUnavailable as e:
+        log.warning("LLM unavailable, %s: %s", "using tool results" if done else "offline router", e)
+    if done:
+        return {"reply": "\n\n".join(done), "mode": "tools"}
     return {"mode": "offline"}
+
+
+def plain(text):
+    """Chat apps show text as is: drop markdown emphasis/headings the model may still produce."""
+    text = re.sub(r"\*\*(.+?)\*\*|__(.+?)__", lambda m: m.group(1) or m.group(2), text)
+    text = re.sub(r"(?m)^#{1,6}\s*", "", text)
+    text = re.sub(r"(?m)^(\s*)[*-]\s+", r"\1• ", text)
+    return text.strip()
 
 
 def offline(state):
@@ -171,13 +190,20 @@ def finalize(state):
         ctx.store.rpush(_history_key(ctx), {"role": "user", "content": state["text"]}, ttl=ctx.settings.history_ttl_s)
         ctx.store.rpush(_history_key(ctx), {"role": "assistant", "content": reply}, ttl=ctx.settings.history_ttl_s)
         ctx.store.ltrim(_history_key(ctx), -2 * ctx.settings.history_turns, -1)
-    if ctx.settings.demo_mode:
-        alerts = [e for e in ctx.events if e["type"] == "notify" and e["kind"] in ("manager_alert", "emergency")
-                  and ctx.user_id not in e["to"]]
-        if alerts:
-            reply += "\n\n" + "\n\n".join(f"{DEMO_HEADER}\n{e['text']}" for e in alerts)
+    reply, buttons = _demo_copy(ctx, reply)
     ctx.save_profile()
-    return {"reply": reply}
+    return {"reply": reply, "buttons": buttons}
+
+
+def _demo_copy(ctx, reply):
+    """Demo mode: the reporter also sees what the manager received (with its buttons), unless they got it directly."""
+    if not ctx.settings.demo_mode:
+        return reply, []
+    alerts = [e for e in ctx.events if e["type"] == "notify" and e["kind"] in ("manager_alert", "emergency")
+              and ctx.user_id not in e["to"]]
+    if alerts:
+        reply += "\n\n" + "\n\n".join(f"{DEMO_HEADER}\n{e['text']}" for e in alerts)
+    return reply, [b for e in alerts for b in e["buttons"]]
 
 
 # ----------------------------------------------------------------------------- graph
@@ -216,18 +242,45 @@ _DEFAULT = {}
 
 def _defaults():
     if not _DEFAULT:
+        env.load()
         settings = S.load()
         _DEFAULT.update(settings=settings, store=ST.from_settings(settings), chain=LLM.from_env())
     return _DEFAULT
 
 
-def handle(user_id, text, *, store=None, settings=None, chain=None, now: Optional[datetime] = None):
-    d = _defaults() if (store is None or settings is None or chain is None) else {}
-    store = store or d["store"]
-    settings = settings or d["settings"]
-    chain = d["chain"] if chain is None else chain
-    ctx = core.Ctx(store=store, settings=settings, user_id=user_id, profile=core.load_profile(store, user_id),
-                   now=now or W.now_pkt())
-    out = GRAPH.invoke({"ctx": ctx, "text": text or "", "chain": chain})
-    return {"reply": out["reply"], "mode": out.get("mode", "offline"), "events": ctx.events,
+def _ctx(user_id, store, settings, now):
+    d = _defaults() if (store is None or settings is None) else {}
+    store, settings = store or d["store"], settings or d["settings"]
+    return core.Ctx(store=store, settings=settings, user_id=user_id, profile=core.load_profile(store, user_id),
+                    now=now or W.now_pkt())
+
+
+def _out(ctx, reply, mode, buttons=()):
+    return {"reply": reply, "mode": mode, "events": ctx.events, "buttons": list(buttons),
             "profile": {k: v for k, v in ctx.profile.items() if k in ("role", "registration")}}
+
+
+def handle(user_id, text, *, store=None, settings=None, chain=None, now: Optional[datetime] = None):
+    ctx = _ctx(user_id, store, settings, now)
+    chain = _defaults()["chain"] if chain is None else chain
+    out = GRAPH.invoke({"ctx": ctx, "text": text or "", "chain": chain})
+    return _out(ctx, out["reply"], out.get("mode", "offline"), out.get("buttons", []))
+
+
+def share_location(user_id, latitude, longitude, *, store=None, settings=None, now: Optional[datetime] = None):
+    """A shared location pin (Telegram/WhatsApp). Kept on the profile for a later emergency report; within an hour
+    after an emergency it goes straight to the manager."""
+    ctx = _ctx(user_id, store, settings, now)
+    ctx.profile["location"] = {"lat": latitude, "lon": longitude, "at": ctx.now.isoformat(timespec="seconds")}
+    emergency = core.recent(ctx, ctx.profile.get("last_emergency"), minutes=60)
+    if ctx.role == "driver" and emergency:
+        ctx.notify(ctx.manager_targets(),
+                   f"📍 Live location {emergency['id']} ({ctx.registration}): {core.maps_link(latitude, longitude)}",
+                   buttons=[{"text": "📞 Call driver", "action": f"call {emergency['id']}"}], kind="emergency")
+        reply = f"📍 Location manager ko bhej di ({emergency['id']}). Mehfooz jagah rahein."
+    else:
+        reply = "📍 Location mil gayi. Emergency ho to 'emergency' ya 'accident' likhein: location saath jayegi."
+    core.log(ctx.store, "location", {"user": user_id, "registration": ctx.registration, **ctx.profile["location"]})
+    reply, buttons = _demo_copy(ctx, reply)
+    ctx.save_profile()
+    return _out(ctx, reply, "command", buttons)

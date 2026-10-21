@@ -140,26 +140,37 @@ def report_issue(ctx, description, category=None, severity=None):
       {"description": _STR, "latitude": _NUM, "longitude": _NUM}, ["description"])
 def report_emergency(ctx, description, latitude=None, longitude=None):
     _need_vehicle(ctx)
+    shared = core.recent(ctx, ctx.profile.get("location"), minutes=30)
+    if (latitude is None or longitude is None) and shared:  # pin shared shortly before the report
+        latitude, longitude = shared["lat"], shared["lon"]
     i = issue_flow.run(ctx, description, category="accident", severity="critical")
-    loc = (f"https://maps.google.com/?q={latitude},{longitude}" if latitude is not None and longitude is not None
+    ctx.profile["last_emergency"] = {"id": i["id"], "at": ctx.now.isoformat(timespec="seconds")}
+    loc = (core.maps_link(latitude, longitude) if latitude is not None and longitude is not None
            else "location share nahi hui")
     core.log(ctx.store, "emergency", {"user": ctx.user_id, "registration": ctx.registration, "issue": i["id"],
                                        "lat": latitude, "lon": longitude, "at": ctx.now.isoformat(timespec="seconds")})
     ctx.notify(ctx.manager_targets(), f"🚨 EMERGENCY {i['id']}: {ctx.registration}: {description}\n📍 {loc}",
                buttons=[{"text": "📞 Call driver", "action": f"call {i['id']}"}], kind="emergency")
     ctx.save_profile()
-    tip = "" if latitude is not None else " Mumkin ho to apni live location share karein."
+    tip = "" if latitude is not None else " Mumkin ho to apni location share karein (📎 → Location)."
     return {"ok": True, "issue_id": i["id"],
             "message": f"{core.SAFETY_ADVICE['accident']}\n🚨 Manager ko emergency alert bhej diya ({i['id']}).{tip}"}
 
 
-@tool("find_service_slots", "Free workshop slots in the driver's city (next days, Mon-Sat).", DRIVER, {"limit": _INT})
-def find_service_slots(ctx, limit=6):
+@tool("find_service_slots", "Free workshop slots in the driver's city (next days, Mon-Sat). Optional filters: date "
+      "(YYYY-MM-DD, e.g. tomorrow for 'kal') and part ('morning' before 12:00 / 'afternoon'). Show the driver exactly "
+      "this list: their 'pehla'/'2' refers to its numbering.", DRIVER,
+      {"limit": _INT, "date": _STR, "part": {"type": "string", "enum": ["morning", "afternoon"]}})
+def find_service_slots(ctx, limit=6, date=None, part=None):
     v = _need_vehicle(ctx)
-    free = [s for s in W.candidate_slots(v["city"], ctx.now) if not ctx.store.get(f"slot:{s['slot_id']}")]
+    free = [s for s in W.candidate_slots(v["city"], ctx.now) if not ctx.store.get(f"slot:{s['slot_id']}")
+            and (not date or s["start"].date().isoformat() == str(date)[:10])
+            and (part not in ("morning", "afternoon") or (s["start"].hour < 12) == (part == "morning"))]
     free = free[:max(1, min(int(limit), 10))]
     if not free:
-        return {"ok": True, "slots": [], "message": "Agle dino mein koi slot khali nahi. Manager se baat karein."}
+        when = "Us waqt" if date or part else "Agle dino mein"
+        return {"ok": True, "slots": [], "message": f"{when} koi slot khali nahi. Doosra din/waqt try karein ya "
+                                                    f"manager se baat karein."}
     ctx.profile["last_offer"] = [s["slot_id"] for s in free]
     ctx.save_profile()
     lines = [f"{n}. {W.label(s)} ({s['slot_id']})" for n, s in enumerate(free, 1)]
@@ -187,7 +198,8 @@ def resolve_choice(ctx, choice):
     return None
 
 
-@tool("book_service", "Book a workshop slot: the slot code, or the number from the last list ('1', 'pehla wala').",
+@tool("book_service", "Book a workshop slot. Pass the slot code exactly as listed (e.g. LHR1-20261022-09) for the "
+      "slot the driver picked; a bare number/'pehla wala' means that position in the last find_service_slots list.",
       DRIVER, {"choice": _STR}, ["choice"])
 def book_service(ctx, choice):
     v = _need_vehicle(ctx)

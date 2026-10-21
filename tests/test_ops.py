@@ -391,11 +391,92 @@ def test_llm_budget_exhausted_goes_offline(env):
 
 
 def test_from_env_builds_the_chain(monkeypatch):
-    for k in ("GEMINI_API_KEY", "GOOGLE_API_KEY", "GROQ_API_KEY", "OLLAMA_BASE_URL", "OPS_LLM_PROVIDER"):
+    for k in ("GEMINI_API_KEY", "GOOGLE_API_KEY", "GROQ_API_KEY", "OLLAMA_BASE_URL", "OPS_LLM_PROVIDER",
+              "OPS_GEMINI_MODEL", "OPS_GROQ_MODEL"):
         monkeypatch.delenv(k, raising=False)
     assert not L.from_env()
     monkeypatch.setenv("GEMINI_API_KEY", "g")
     monkeypatch.setenv("GROQ_API_KEY", "q")
-    assert [p.name for p in L.from_env().providers] == ["gemini", "groq"]
+    assert [p.name for p in L.from_env().providers] == ["gemini", "gemini", "groq"]   # two Gemini models by default
+    monkeypatch.setenv("OPS_GEMINI_MODEL", " gemini-a , gemini-b,")
+    assert [p.model for p in L.from_env().providers][:2] == ["gemini-a", "gemini-b"]
     monkeypatch.setenv("OPS_LLM_PROVIDER", "offline")
     assert not L.from_env()
+
+
+# ----------------------------------------------------------------------------- phase 2 fixes from the live run
+def test_filtered_slots_pehla_books_the_first_slot_shown(env):
+    """Live bug: the LLM showed tomorrow-morning slots, driver said 'pehla wala', today's slot got booked."""
+    say(env, "telegram:1", "driver LEA-22-2030")
+    r = say(env, "telegram:1", "kal subah ka koi slot mil jayega?")
+    assert r["reply"].splitlines()[1].startswith("1. Thu 22 Oct, 09:00 AM")
+    assert "Wed 21 Oct" not in r["reply"] and "02:00 PM" not in r["reply"]
+    say(env, "telegram:1", "pehla wala book kar do")
+    assert core.get_record(env["store"], "booking", "BK-2001")["slot_id"] == "LHR1-20261022-09"
+
+
+def test_slot_filters_on_the_tool(env):
+    say(env, "telegram:1", "driver LEA-22-2030")
+    ctx = core.Ctx(env["store"], env["settings"], "telegram:1", core.load_profile(env["store"], "telegram:1"), WED)
+    r = core.run_tool(ctx, "find_service_slots", {"date": "2026-10-22", "part": "afternoon"})
+    assert r["slots"] and all("20261022-14" in s["slot_id"] or "20261022-16" in s["slot_id"] for s in r["slots"])
+    assert ctx.profile["last_offer"] == [s["slot_id"] for s in r["slots"]]
+    none = core.run_tool(ctx, "find_service_slots", {"date": "2026-10-25"})            # a Sunday
+    assert none["slots"] == [] and "Us waqt" in none["message"]
+
+
+@pytest.mark.parametrize("text,want", [
+    ("kal subah slot", {"date": "2026-10-22", "part": "morning"}),
+    ("aaj shaam ko workshop", {"date": "2026-10-21", "part": "afternoon"}),
+    ("parson ka slot", {"date": "2026-10-23"}),
+    ("slot chahiye", {}),
+])
+def test_parse_when(env, text, want):
+    from ops import router
+    ctx = core.Ctx(env["store"], env["settings"], "telegram:1", {}, WED)
+    assert router.parse_when(ctx, text) == want
+
+
+def test_chain_rests_a_failing_provider():
+    clock = [0.0]
+    calls = []
+
+    def busy(url, headers, payload):
+        calls.append("busy")
+        raise OSError("503")
+
+    def ok(url, headers, payload):
+        calls.append("ok")
+        return {"choices": [{"message": {"content": "hi"}}]}
+
+    chain = L.Chain([L.Provider("gemini", "u", "k", "a", transport=busy), L.Provider("gemini", "u", "k", "b", transport=ok)],
+                    clock=lambda: clock[0])
+    chain.chat([])
+    chain.chat([])
+    assert calls == ["busy", "ok", "ok"]                     # the busy model is not waited on twice
+    clock[0] += L.Chain.COOLDOWN_S + 1
+    chain.chat([])
+    assert calls[-2:] == ["busy", "ok"]                      # retried after the cooldown
+
+
+def test_llm_failure_after_a_tool_ran_does_not_duplicate_it(env):
+    """The model reports the issue, then the provider dies: reply from the tool result, no second report."""
+    calls = []
+
+    def flaky(url, headers, payload):
+        calls.append(1)
+        if len(calls) > 1:
+            raise OSError("503 busy")
+        return {"choices": [{"message": {"role": "assistant", "content": None, "tool_calls": [
+            {"id": "c1", "type": "function", "function": {"name": "report_issue", "arguments": json.dumps(
+                {"description": "brake se awaaz", "category": "brakes", "severity": "medium"})}}]}}]}
+
+    chain = L.Chain([L.Provider("gemini", "https://x", "k", "m", transport=flaky)])
+    say(env, "telegram:1", "driver LEA-22-2030")
+    r = say(env, "telegram:1", "brake se awaaz aa rahi hai", chain=chain)
+    assert r["mode"] == "tools" and "ISS-1001" in r["reply"]
+    assert [i["id"] for i in core.list_records(env["store"], "issue")] == ["ISS-1001"]
+
+
+def test_plain_strips_markdown():
+    assert brain.plain("## Report\n**Waqt:** kal\n* one\n- two\n__x__") == "Report\nWaqt: kal\n• one\n• two\nx"

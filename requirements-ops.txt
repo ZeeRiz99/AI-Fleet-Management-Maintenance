@@ -3,3 +3,6 @@
 pandas==3.0.6
 numpy==2.5.3
 langgraph==1.2.16
+# Webhook server (Telegram now, WhatsApp later): uvicorn ops.web:app
+fastapi==0.143.0
+uvicorn==0.54.0

@@ -88,7 +88,7 @@ One **OpenAI-compatible** client; changing provider = changing `base_url` + mode
 
 | Task | Hosted (free tier) | Local / offline |
 |---|---|---|
-| Agent chat + tool calling | Gemini Flash → fallback Groq (Llama/Qwen) | Ollama + a 3–4B model (e.g. Qwen 2.5 3B) |
+| Agent chat + tool calling | Gemini Flash (2 models, busy → next) → fallback Groq (gpt-oss-120b) | Ollama + a 3–4B model (e.g. Qwen 2.5 3B) |
 | Urdu voice → text | Gemini audio or Groq Whisper | whisper.cpp small (slow) |
 | Fuel receipt photo | Gemini vision | — |
 | Intent routing | own small ML classifier (no LLM call) | same |
@@ -103,7 +103,7 @@ free inference credits are too small for production). Ollama is installed only a
 
 ```
 Telegram (text/voice/location) ─webhook─┐
-WhatsApp (text/voice/location) ─webhook─┼─> ops/app.py ─> ops/brain.py ─> LangGraph workflow + LLM agent + offline router
+WhatsApp (text/voice/location) ─webhook─┼─> ops/web.py ─> ops/brain.py ─> LangGraph workflow + LLM agent + offline router
 Android app (STT text) ─REST────────────┘           │
                                       tools: src/agent.py + ops/workflow.py; data: alerts.csv, fleet.db, fuel baselines
                                       ops/store.py: Upstash Redis (hosted) / SQLite (local + tests)
