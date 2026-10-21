@@ -1,0 +1,5 @@
+# FleetLog AI agent (ops/). Kept separate so the Streamlit deploy (requirements.txt) is unaffected.
+# The LLM layer uses the OpenAI-compatible HTTP API through the standard library: no SDK needed.
+pandas==3.0.6
+numpy==2.5.3
+langgraph==1.2.16
