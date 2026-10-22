@@ -6,6 +6,7 @@
 Values are JSON. Lists follow Redis semantics (rpush appends, lrange stop is inclusive, negative indexes allowed).
 """
 import json
+import os
 import sqlite3
 import threading
 import time
@@ -191,8 +192,9 @@ class RedisStore(Store):
 def from_settings(settings):
     if settings.redis_url and settings.redis_token:
         return RedisStore(settings.redis_url, settings.redis_token)
+    if os.environ.get("VERCEL"):  # read-only filesystem: /tmp works but is per-instance and temporary
+        return SQLiteStore("/tmp/fleetlog-ops.db")
     path = settings.sqlite_path or ":memory:"
     if path != ":memory:":
-        import os
         os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     return SQLiteStore(path)

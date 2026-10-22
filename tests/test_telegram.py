@@ -364,3 +364,62 @@ def test_transcriber_rests_a_timed_out_engine():
     stt = SP.Transcriber([Engine("slow", False), Engine("fast", True)], clock=lambda: 0.0)
     assert stt.transcribe(b"a") == stt.transcribe(b"a") == "theek hai"
     assert calls == ["slow", "fast", "fast"]
+
+
+# ----------------------------------------------------------------------------- app chat (phase 5) and channels
+def test_app_chat_needs_the_key_and_a_valid_session(web, monkeypatch):
+    client, _ = web
+    body = {"session": "abcd1234-ef", "text": "/start"}
+    assert client.post("/api/chat", json=body).status_code == 403                  # no key configured: closed
+    monkeypatch.setenv("OPS_APP_KEY", "appkey1")
+    assert client.post("/api/chat", json=body, headers={"X-App-Key": "nope"}).status_code == 403
+    assert client.post("/api/chat", json={**body, "session": "x/../y"}, headers={"X-App-Key": "appkey1"}).status_code == 422
+    r = client.post("/api/chat", json=body, headers={"X-App-Key": "appkey1"})
+    assert r.status_code == 200 and "FleetLog AI" in r.json()["reply"]
+
+
+def test_app_driver_report_alerts_the_telegram_manager(web, monkeypatch):
+    client, _ = web
+    monkeypatch.setenv("OPS_APP_KEY", "appkey1")
+    store = brain._DEFAULT["store"]
+    store.sadd("subscribers", f"telegram:{MANAGER}")
+    h = {"X-App-Key": "appkey1"}
+    client.post("/api/chat", json={"session": "phone-0001", "text": "driver LEA-22-2030"}, headers=h)
+    r = client.post("/api/chat", json={"session": "phone-0001", "text": "brake fail ho gaye"}, headers=h).json()
+    assert r["reply"].startswith("⚠️ Hifazat pehle") and r["profile"] == {"role": "driver", "registration": "LEA-22-2030"}
+    sent = web_bot_api(monkeypatch).sent(MANAGER)
+    assert sent and "ISS-1001" in sent[-1]["text"] and sent[-1]["reply_markup"]
+
+
+def web_bot_api(monkeypatch):
+    import ops.web as W
+    return W._BOT["bot"].transport
+
+
+def test_channels_route_each_target_and_forward_events(monkeypatch):
+    from ops import channels
+    tg_api, wa_sent, forwarded = FakeTelegram(), [], []
+
+    class FakeWA:
+        def send(self, to, text, buttons=None):
+            wa_sent.append((to, text, buttons))
+
+    events = [{"type": "notify", "kind": "manager_alert", "to": ["telegram:5", "whatsapp:923001234567", "app:x"],
+               "text": "alert", "buttons": [{"text": "OK", "action": "call ISS-1"}]},
+              {"type": "event", "name": "issue.reported", "data": {"id": "ISS-1"}}]
+    n = channels.deliver(events, telegram_bot=T.Bot("t", transport=tg_api), whatsapp_client=FakeWA(),
+                         forward=forwarded.append)
+    assert n == 2 and tg_api.sent("5") and wa_sent[0][0] == "923001234567"
+    assert forwarded[0]["name"] == "issue.reported"
+
+
+def test_forward_event_posts_with_secret(monkeypatch):
+    from ops import channels
+    seen = {}
+    monkeypatch.setenv("OPS_EVENTS_WEBHOOK_URL", "https://hooks.example/fleet")
+    monkeypatch.setenv("OPS_EVENTS_WEBHOOK_SECRET", "s")
+    channels.forward_event({"name": "booking.created", "data": {"id": "BK-1"}},
+                           transport=lambda url, body, headers: seen.update(url=url, body=json.loads(body), h=headers))
+    assert seen["body"] == {"event": "booking.created", "data": {"id": "BK-1"}} and seen["h"]["X-FleetLog-Secret"] == "s"
+    monkeypatch.delenv("OPS_EVENTS_WEBHOOK_URL")
+    assert channels.forward_event({"name": "x", "data": {}}) is False

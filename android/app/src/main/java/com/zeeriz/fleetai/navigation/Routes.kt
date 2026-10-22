@@ -27,6 +27,7 @@ object Routes {
     const val DRIVER_DETAIL = "drivers/{$DRIVER_ID}"
     fun driverDetail(id: Int) = "drivers/$id"
     const val TRIPS = "trips"
+    const val ASSISTANT = "assistant"
 }
 
 /** The five sections in the bottom bar; everything else opens from these. */

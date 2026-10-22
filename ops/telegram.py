@@ -4,7 +4,7 @@ local long-polling runner (python -m ops.setup_telegram poll).
 * private chats only; every update is processed once (update_id lock in the store)
 * text -> brain.handle; voice/audio -> speech-to-text -> brain.handle; location pin -> brain.share_location
 * inline buttons carry manager actions ("approve BK-2001"); presses run the same commands as typing them
-* notify events from the brain are delivered to their Telegram targets (WhatsApp targets come in phase 6)
+* notify events from the brain go out through ops.channels (Telegram, WhatsApp) with business events
 """
 import json
 import logging
@@ -12,7 +12,7 @@ import os
 import urllib.error
 import urllib.request
 
-from . import brain, core
+from . import brain, channels, core
 
 log = logging.getLogger("fleetlog.telegram")
 API = "https://api.telegram.org"
@@ -182,21 +182,8 @@ def _button(cq, bot, chain, kw):
 
 
 def deliver(events, bot):
-    """Send queued notify events to their Telegram targets; one failed target does not stop the others."""
-    sent = 0
-    for e in events:
-        if e.get("type") != "notify":
-            continue
-        for target in e["to"]:
-            cid = chat_id(target)
-            if cid is None:
-                continue
-            try:
-                bot.send(cid, e["text"], e.get("buttons"))
-                sent += 1
-            except Exception as ex:
-                log.warning("notify %s failed: %s", target, ex)
-    return sent
+    """Alerts go out on every channel (a Telegram driver's report can reach a WhatsApp manager)."""
+    return channels.deliver(events, telegram_bot=bot)
 
 
 def from_env(**kw):

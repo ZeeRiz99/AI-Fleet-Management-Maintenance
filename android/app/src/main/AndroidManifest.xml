@@ -3,6 +3,13 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Android 11+ package visibility: lets "Ask FleetLog AI" find the phone's speech recogniser -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
+    </queries>
+
     <application
         android:name=".FleetApplication"
         android:allowBackup="true"

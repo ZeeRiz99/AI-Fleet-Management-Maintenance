@@ -1,0 +1,18 @@
+{
+  "reply": "⚠️ Hifazat pehle: gaari aahista chalayein, mehfooz jagah rok dein, brake ki halat check hone tak lambi trip na karein.\n📝 Report ISS-1001 ban gayi (brakes, high).\nIs gaari ka AI breakdown risk: 53% (High) (demo data, 1 Jan 2026 tak).\nTajweez: Brake Inspection. AI model ke mutabiq Engine Tune-Up bhi due hai.\nManager ko foran alert bhej diya gaya hai.\nWorkshop ka waqt lene ke liye 'slot' likhein.\n\n— Demo: manager ko ye alert gaya —\n🔔 URGENT Driver report ISS-1001\nVehicle: LEA-22-2030 (Lahore)\nMasla: brake se bohat awaaz aa rahi hai\nCategory: brakes · severity: high\nAI breakdown risk (data as of 1 Jan 2026): 53% (High)\nWajah: vehicle age (yrs) = 4.0; overdue-service load = 0.2; km since brake service = 24,890.0\nSuggested: Brake Inspection",
+  "mode": "offline",
+  "buttons": [
+    {
+      "text": "📞 Call driver",
+      "action": "call ISS-1001"
+    },
+    {
+      "text": "✔ Resolved",
+      "action": "resolve ISS-1001"
+    }
+  ],
+  "profile": {
+    "role": "driver",
+    "registration": "LEA-22-2030"
+  }
+}

@@ -81,7 +81,7 @@ fun LoginScreen(viewModel: LoginViewModel = viewModel(factory = LoginViewModel.F
                 contentAlignment = Alignment.Center,
             ) { Icon(FleetIcons.Truck, contentDescription = null, tint = Color.White, modifier = Modifier.size(30.dp)) }
             Spacer(Modifier.height(18.dp))
-            Text("FleetAI", style = MaterialTheme.typography.headlineMedium, color = Color.White)
+            Text("FleetLog AI", style = MaterialTheme.typography.headlineMedium, color = Color.White)
             Text(
                 "Fleet management & predictive maintenance",
                 style = MaterialTheme.typography.bodyMedium,
