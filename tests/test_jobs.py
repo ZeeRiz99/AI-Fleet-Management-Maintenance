@@ -102,6 +102,7 @@ def client(monkeypatch, env):
     web = importlib.import_module("ops.web")
     monkeypatch.setattr(brain, "_DEFAULT", {"settings": env["settings"], "store": env["store"], "chain": L.Chain([])})
     monkeypatch.setitem(web._BOT, "bot", None)
+    monkeypatch.setitem(web._BOT, "wa", None)
     return TestClient(web.app)
 
 

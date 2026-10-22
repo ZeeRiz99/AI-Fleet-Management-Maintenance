@@ -5,17 +5,21 @@ GET  /health             liveness + which pieces are configured (never any secre
 POST /webhooks/telegram  Telegram updates; only requests carrying our secret token are accepted
 POST /api/chat           the Android app's "Ask FleetLog AI" screen (X-App-Key header)
 GET  /cron/morning       daily brief + reminders (Vercel Cron, Authorization: Bearer CRON_SECRET)
+GET  /webhooks/whatsapp  Meta's subscription handshake (WHATSAPP_VERIFY_TOKEN)
+POST /webhooks/whatsapp  WhatsApp messages; signature checked with WHATSAPP_APP_SECRET
 """
 import hmac
+import json
 import logging
 import os
 import re
 
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 
-from . import brain, channels, env, jobs, telegram
+from . import brain, channels, env, jobs, telegram, whatsapp
 
 env.load()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -32,6 +36,12 @@ def _bot():
     if "bot" not in _BOT:
         _BOT["bot"] = telegram.from_env()
     return _BOT["bot"]
+
+
+def _wa():
+    if "wa" not in _BOT:
+        _BOT["wa"] = whatsapp.from_env()
+    return _BOT["wa"]
 
 
 def _same(given, expected):
@@ -55,7 +65,8 @@ def health():
             "store_persistent": persistent,
             "telegram": bool(os.environ.get("TELEGRAM_BOT_TOKEN")),
             "webhook_secret": bool(os.environ.get("TELEGRAM_WEBHOOK_SECRET")),
-            "app_chat": bool(os.environ.get("OPS_APP_KEY"))}
+            "app_chat": bool(os.environ.get("OPS_APP_KEY")),
+            "whatsapp": bool(os.environ.get("WHATSAPP_TOKEN") and os.environ.get("WHATSAPP_APP_SECRET"))}
 
 
 @app.post("/webhooks/telegram")
@@ -85,9 +96,37 @@ def cron_morning(authorization: str = Header(default="")):
         raise HTTPException(401, "unauthorized")
     d = brain._defaults()
     summary, events = jobs.morning(d["store"], d["settings"])
-    summary["sent"] = channels.deliver(events, telegram_bot=_bot())
+    summary["sent"] = channels.deliver(events, telegram_bot=_bot(), whatsapp_client=_wa())
     log.info("morning job: %s", summary)
     return summary
+
+
+@app.get("/webhooks/whatsapp")
+def whatsapp_verify(request: Request):
+    challenge = whatsapp.verify_subscription(dict(request.query_params), os.environ.get("WHATSAPP_VERIFY_TOKEN", ""))
+    if challenge is None:
+        raise HTTPException(403, "forbidden")
+    return PlainTextResponse(challenge)
+
+
+@app.post("/webhooks/whatsapp")
+async def whatsapp_webhook(request: Request, x_hub_signature_256: str = Header(default="")):
+    raw = await request.body()  # the signature covers these exact bytes: verify before parsing
+    if len(raw) > MAX_BODY:
+        raise HTTPException(413, "too large")
+    if not whatsapp.verify_signature(raw, x_hub_signature_256, os.environ.get("WHATSAPP_APP_SECRET", "")):
+        raise HTTPException(403, "forbidden")
+    client = _wa()
+    if client is None:
+        raise HTTPException(503, "whatsapp not configured")
+    try:
+        payload = json.loads(raw)
+    except ValueError:
+        raise HTTPException(400, "bad json") from None
+    statuses = await run_in_threadpool(whatsapp.handle_payload, payload, client=client)
+    if statuses:
+        log.info("whatsapp -> %s", statuses)
+    return {"ok": True}
 
 
 class ChatIn(BaseModel):
@@ -104,5 +143,5 @@ def app_chat(body: ChatIn, x_app_key: str = Header(default="")):
     if not SESSION_RE.match(body.session):
         raise HTTPException(422, "bad session id")
     out = brain.handle(f"app:{body.session}", body.text)
-    channels.deliver(out["events"], telegram_bot=_bot())
+    channels.deliver(out["events"], telegram_bot=_bot(), whatsapp_client=_wa())
     return {"reply": out["reply"], "mode": out["mode"], "buttons": out.get("buttons", []), "profile": out["profile"]}

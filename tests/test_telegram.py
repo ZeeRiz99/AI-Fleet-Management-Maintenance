@@ -316,6 +316,7 @@ def web(monkeypatch):
     monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "s3cret")
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123:test")
     monkeypatch.setitem(web._BOT, "bot", T.Bot("123:test", transport=FakeTelegram()))
+    monkeypatch.setitem(web._BOT, "wa", None)
     monkeypatch.setattr(brain, "_DEFAULT", {"settings": S.Settings(), "store": ST.SQLiteStore(), "chain": L.Chain([])})
     seen = []
     monkeypatch.setattr(T, "handle_update", lambda update, bot: seen.append(update) or "text:command")

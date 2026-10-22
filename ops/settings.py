@@ -15,6 +15,10 @@ def _int(name, default):
         return default
 
 
+def _digits(number):
+    return "".join(ch for ch in number if ch.isdigit())  # "+92 300-1234567" -> "923001234567"
+
+
 def _list(name):
     return [x.strip() for x in os.environ.get(name, "").split(",") if x.strip()]
 
@@ -30,7 +34,7 @@ class Settings:
     history_ttl_s: int = 2 * 24 * 3600
     # manager targets: "telegram:<chat_id>" / "whatsapp:<number>" ids that always receive alerts
     manager_ids: list = field(default_factory=lambda: [f"telegram:{x}" for x in _list("TELEGRAM_MANAGER_CHAT_IDS")]
-                              + [f"whatsapp:{x}" for x in _list("WHATSAPP_MANAGER_NUMBERS")])
+                              + [f"whatsapp:{_digits(x)}" for x in _list("WHATSAPP_MANAGER_NUMBERS")])
     # store: Upstash Redis REST when configured, else SQLite file
     redis_url: str = field(default_factory=lambda: os.environ.get("UPSTASH_REDIS_REST_URL", ""))
     redis_token: str = field(default_factory=lambda: os.environ.get("UPSTASH_REDIS_REST_TOKEN", ""))
