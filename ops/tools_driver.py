@@ -112,6 +112,16 @@ def log_fuel(ctx, litres, km=None, odometer_km=None, amount_pkr=None):
             "message": f"✅ Fuel log: {litres:g} L, {km:,.0f} km = {actual:.2f} km/l. Normal hai, shukriya!"}
 
 
+def _recent_open_issue(ctx, category, minutes=30):
+    """This driver's still-open issue of the same category from the last `minutes` (one report per problem)."""
+    for i in reversed(core.list_records(ctx.store, "issue", last=50)):
+        if (i.get("reporter") == ctx.user_id and i.get("registration") == ctx.registration
+                and i.get("category") == category and i.get("status") in ("open", "service_booked")
+                and core.recent(ctx, {"at": i.get("created_at")}, minutes)):
+            return i
+    return None
+
+
 @tool("report_issue", "Report a vehicle problem. Give the driver's words as description; category and severity "
       "if clear (category: brakes/engine/tyres/electrical/fuel/overheating/accident/other; severity: "
       "low/medium/high/critical).", DRIVER,
@@ -119,6 +129,12 @@ def log_fuel(ctx, litres, km=None, odometer_km=None, amount_pkr=None):
        "severity": {"type": "string", "enum": list(core.VALID_SEVERITIES)}}, ["description"])
 def report_issue(ctx, description, category=None, severity=None):
     _need_vehicle(ctx)
+    same = _recent_open_issue(ctx, category if category in core.VALID_CATEGORIES else core.classify(description)[0])
+    if same:  # the model repeating a call, or the driver sending the same problem again
+        return {"ok": True, "issue_id": same["id"], "duplicate": True, "category": same["category"],
+                "severity": same["severity"],
+                "message": f"📝 Ye masla pehle hi report ho chuka hai ({same['id']}, {same['category']}); "
+                           f"manager ko pata hai. Workshop ke liye 'slot' likhein."}
     i = issue_flow.run(ctx, description, category, severity)
     ctx.save_profile()
     advice = core.safety_advice(i["category"], i["severity"])
@@ -133,7 +149,7 @@ def report_issue(ctx, description, category=None, severity=None):
         "Manager ko foran alert bhej diya gaya hai." if i["escalated"] else "Report log ho gayi; subah ki report mein jayegi.",
         "Workshop ka waqt lene ke liye 'slot' likhein."] if x)
     return {"ok": True, "issue_id": i["id"], "escalated": i["escalated"], "category": i["category"],
-            "severity": i["severity"], "message": msg}
+            "severity": i["severity"], "safety": advice, "message": msg}
 
 
 @tool("report_emergency", "Emergency or accident: alerts the manager immediately, with location if shared.", DRIVER,
@@ -153,7 +169,7 @@ def report_emergency(ctx, description, latitude=None, longitude=None):
                buttons=[{"text": "📞 Call driver", "action": f"call {i['id']}"}], kind="emergency")
     ctx.save_profile()
     tip = "" if latitude is not None else " Mumkin ho to apni location share karein (📎 → Location)."
-    return {"ok": True, "issue_id": i["id"],
+    return {"ok": True, "issue_id": i["id"], "safety": core.SAFETY_ADVICE["accident"],
             "message": f"{core.SAFETY_ADVICE['accident']}\n🚨 Manager ko emergency alert bhej diya ({i['id']}).{tip}"}
 
 

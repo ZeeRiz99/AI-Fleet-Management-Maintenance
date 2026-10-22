@@ -397,7 +397,9 @@ def test_from_env_builds_the_chain(monkeypatch):
     assert not L.from_env()
     monkeypatch.setenv("GEMINI_API_KEY", "g")
     monkeypatch.setenv("GROQ_API_KEY", "q")
-    assert [p.name for p in L.from_env().providers] == ["gemini", "gemini", "groq"]   # two Gemini models by default
+    chain = L.from_env()
+    assert [p.name for p in chain.providers] == ["gemini", "gemini", "groq", "groq"]  # two models each by default
+    assert [p.nullable for p in chain.providers] == [False, False, True, True]
     monkeypatch.setenv("OPS_GEMINI_MODEL", " gemini-a , gemini-b,")
     assert [p.model for p in L.from_env().providers][:2] == ["gemini-a", "gemini-b"]
     monkeypatch.setenv("OPS_LLM_PROVIDER", "offline")
@@ -480,3 +482,114 @@ def test_llm_failure_after_a_tool_ran_does_not_duplicate_it(env):
 
 def test_plain_strips_markdown():
     assert brain.plain("## Report\n**Waqt:** kal\n* one\n- two\n__x__") == "Report\nWaqt: kal\n• one\n• two\nx"
+
+
+def test_provider_sends_a_user_agent():
+    """Live finding: Groq's CDN answers 403 (error 1010) to urllib's default User-Agent."""
+    seen = {}
+
+    def transport(url, headers, payload):
+        seen.update(headers)
+        return {"choices": [{"message": {"content": "ok"}}]}
+
+    L.Provider("groq", "https://g", "k", "m", transport=transport).chat([])
+    assert seen["User-Agent"].startswith("fleetlog-ai") and seen["Authorization"] == "Bearer k"
+
+
+def test_groq_gets_nullable_optionals_and_nulls_mean_default(env):
+    tools = [{"type": "function", "function": {"name": "plan_services", "description": "d", "parameters": {
+        "type": "object", "properties": {"budget_pkr": {"type": "number"}, "max_vehicles": {"type": "integer"}},
+        "required": ["budget_pkr"]}}}]
+    props = L.nullable_optionals(tools)[0]["function"]["parameters"]["properties"]
+    assert props["max_vehicles"]["type"] == ["integer", "null"] and props["budget_pkr"]["type"] == "number"
+    assert tools[0]["function"]["parameters"]["properties"]["max_vehicles"]["type"] == "integer"   # not mutated
+    say(env, "telegram:2", "manager")
+    ctx = core.Ctx(env["store"], env["settings"], "telegram:2", core.load_profile(env["store"], "telegram:2"), WED)
+    r = core.run_tool(ctx, "plan_services", {"budget_pkr": 100000, "max_vehicles": None})
+    assert r["ok"] and "Rs 100,000" in r["message"]
+
+
+def test_a_400_does_not_rest_the_provider():
+    import urllib.error
+    calls = []
+
+    def bad_request(url, headers, payload):
+        calls.append(1)
+        raise urllib.error.HTTPError(url, 400, "tool_use_failed", {}, None)
+
+    chain = L.Chain([L.Provider("groq", "u", "k", "m", transport=bad_request)])
+    for _ in range(2):
+        with pytest.raises(L.LLMUnavailable, match="HTTPError 400"):
+            chain.chat([])
+    assert len(calls) == 2 and chain.resting == {}
+
+
+# ----------------------------------------------------------------------------- grounding guard (live Groq findings)
+def test_claimed_booking_without_the_tool_is_rejected_and_really_booked(env):
+    """Live: the model answered 'doosra wala' with 'Book kar diya' but never called book_service."""
+    say(env, "telegram:1", "driver LEA-22-2030")
+    say(env, "telegram:1", "kal shaam ka slot")                                   # offline: real offer list
+    seen = []
+    liar = L.Chain([L.Provider("groq", "https://g", "k", "m", transport=scripted(
+        [{"role": "assistant", "content": "✅ Book kar diya: Thu 22 Oct, 02:00 PM, Lahore Workshop 2."}], seen))])
+    r = say(env, "telegram:1", "doosra wala", chain=liar)
+    assert r["mode"] == "offline" and "BK-2001" in r["reply"]                    # the router really booked it
+    assert core.get_record(env["store"], "booking", "BK-2001")["slot_id"] == "LHR2-20261022-14"
+
+
+def test_invented_numbers_are_rejected(env):
+    """Live: 'meri driving kaisi hai?' -> 'score 82/100, 12 incidents' with no tool call."""
+    say(env, "telegram:1", "driver LEA-22-2030")
+    liar = L.Chain([L.Provider("groq", "https://g", "k", "m", transport=scripted(
+        [{"role": "assistant", "content": "Safety score: 82/100, 12 incidents, aap 78% drivers se aage hain."}], []))])
+    r = say(env, "telegram:1", "meri driving kaisi hai?", chain=liar)
+    assert r["mode"] == "offline" and "82/100" not in r["reply"] and "🏅" in r["reply"]
+
+
+def test_grounded_reply_passes():
+    sources = json.dumps([{"role": "tool", "content": '{"ok": true, "message": "Score 79/100, avg 77, Rs 96,100"}'}])
+    assert brain.ungrounded("Aap ka score 79/100 hai (average 77). Kharcha Rs 96,100.", {"my_score"}, sources) is None
+    assert "82" in brain.ungrounded("Score 82/100", {"my_score"}, sources)
+    assert "book_service" in brain.ungrounded("Slot book kar diya!", set(), sources)
+    assert brain.ungrounded("Slot book kar diya!", {"book_service"}, sources) is None
+    assert brain.ungrounded("Salam! Kya madad karun?", set(), "") is None
+
+
+def test_same_problem_twice_is_one_report(env):
+    """Live: one voice note became ISS-1001..1004 (the model repeated report_issue)."""
+    say(env, "telegram:1", "driver LEA-22-2030")
+    say(env, "telegram:1", "brake se awaaz aa rahi hai")
+    r = say(env, "telegram:1", "brake bohat awaaz kar rahi hai")
+    assert "pehle hi report" in r["reply"] and "ISS-1001" in r["reply"]
+    say(env, "telegram:1", "gaari garam ho rahi hai")                                 # a different problem: new report
+    assert [i["id"] for i in core.list_records(env["store"], "issue")] == ["ISS-1001", "ISS-1002"]
+    say(env, "telegram:1", "brake se phir awaaz", now=WED + timedelta(hours=1))       # later: a new report
+    assert len(core.list_records(env["store"], "issue")) == 3
+
+
+def test_safety_advice_is_kept_first_even_if_the_model_drops_it(env):
+    """Live: the model summarised report_issue and left out the safety line."""
+    replies = [
+        {"role": "assistant", "content": None, "tool_calls": [{"id": "c1", "type": "function", "function": {
+            "name": "report_issue", "arguments": json.dumps({"description": "brake fail", "category": "brakes"})}}]},
+        {"role": "assistant", "content": "Report ISS-1001 ban gayi."},
+    ]
+    chain = L.Chain([L.Provider("groq", "https://g", "k", "m", transport=scripted(replies, []))])
+    say(env, "telegram:1", "driver LEA-22-2030")
+    r = say(env, "telegram:1", "brake fail ho gaye", chain=chain)
+    assert r["mode"] == "llm:groq" and r["reply"].startswith(core.SAFETY_ADVICE["brakes"])
+    assert r["reply"].count("Hifazat pehle") == 1
+
+
+def test_safety_advice_not_doubled_when_the_model_retypes_it(env):
+    advice = core.SAFETY_ADVICE["overheating"]
+    retyped = advice.replace("️", "") + "  "                       # live: emoji without the variation selector
+    replies = [
+        {"role": "assistant", "content": None, "tool_calls": [{"id": "c1", "type": "function", "function": {
+            "name": "report_issue", "arguments": json.dumps({"description": "garam", "category": "overheating"})}}]},
+        {"role": "assistant", "content": retyped + "\nReport ISS-1001 ban gayi."},
+    ]
+    chain = L.Chain([L.Provider("groq", "https://g", "k", "m", transport=scripted(replies, []))])
+    say(env, "telegram:1", "driver LEA-22-2030")
+    r = say(env, "telegram:1", "gaari garam ho gayi", chain=chain)
+    assert r["reply"].count("Hifazat pehle") == 1

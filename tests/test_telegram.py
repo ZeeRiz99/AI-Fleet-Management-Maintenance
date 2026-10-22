@@ -346,3 +346,21 @@ def test_health_shows_no_secrets(web):
     body = client.get("/health").json()
     assert body["ok"] and body["telegram"] is True and body["llm"] == "offline"
     assert "s3cret" not in json.dumps(body) and "123:test" not in json.dumps(body)
+
+
+def test_transcriber_rests_a_timed_out_engine():
+    calls = []
+
+    class Engine:
+        def __init__(self, name, ok):
+            self.name, self.ok = name, ok
+
+        def transcribe(self, audio, mime):
+            calls.append(self.name)
+            if not self.ok:
+                raise TimeoutError()
+            return "theek hai"
+
+    stt = SP.Transcriber([Engine("slow", False), Engine("fast", True)], clock=lambda: 0.0)
+    assert stt.transcribe(b"a") == stt.transcribe(b"a") == "theek hai"
+    assert calls == ["slow", "fast", "fast"]

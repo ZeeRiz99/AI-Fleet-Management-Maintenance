@@ -48,11 +48,14 @@ def _system_prompt(ctx):
         "You are FleetLog AI, the AI Fleet Log Assistant of a Pakistani fleet (km, litres, PKR). "
         f"Current time: {ctx.now:%A %d %B %Y, %H:%M} PKT. {who} "
         "Reply in the user's language and script (Roman Urdu, Urdu or English), short and friendly. "
-        "Use ONLY tool results for facts and numbers; never invent data. Vehicle risk data is a simulated demo fleet "
+        "Use ONLY tool results for facts and numbers; never invent data. Never say something was booked, reported, "
+        "logged or approved unless you called that tool in this turn and it returned ok. "
+        "Vehicle risk data is a simulated demo fleet "
         "scored as of 1 Jan 2026; say so when quoting risk or savings. "
         "Driver workflow: (1) understand the problem, (2) call report_issue (safety advice comes first in its "
         "message), (3) offer find_service_slots (use its date/part filters for 'kal subah' etc. and show its list "
-        "as is), (4) book_service with the exact slot code of the slot the driver picked, (5) confirm. "
+        "as is), (4) book_service with the exact slot code of the slot the driver picked, (5) say it is booked and "
+        "waiting for the manager's approval (not 'confirmed' until the manager approves). "
         "Fuel fill-ups -> log_fuel; shift start -> start_shift; accidents/emergencies -> report_emergency. "
         "A driver may only see their own vehicle; refuse other vehicles, costs and fleet-wide data. "
         "Chat formatting: plain text and • bullet lines; no markdown tables or headings. "
@@ -139,14 +142,20 @@ def agent(state):
     messages = [{"role": "system", "content": _system_prompt(ctx)}, *_history(ctx),
                 {"role": "user", "content": state["text"]}]
     done = []  # messages of tools already run this turn: never run them twice through the offline router
+    ran, safety = set(), []
     try:
         for _ in range(MAX_TOOL_ROUNDS):
             msg = chain.chat(messages, tools)
             calls = msg.get("tool_calls") or []
             if not calls:
                 text = plain(msg.get("content") or "")
-                if text:
-                    return {"reply": text, "mode": f"llm:{chain.last_used}"}
+                problem = ungrounded(text, ran, json.dumps(messages, ensure_ascii=False, default=str))
+                if problem:  # the model claimed an action it did not take, or a number no tool gave
+                    log.warning("LLM reply rejected (%s): %s", chain.last_used, problem)
+                    break
+                if text:  # safety advice always leads (spec), whatever the model wrote
+                    lead = [a for a in safety if _letters(a) not in _letters(text)]
+                    return {"reply": "\n".join([*lead, text]), "mode": f"llm:{chain.last_used}"}
                 break
             messages.append({"role": "assistant", "content": msg.get("content") or "", "tool_calls": calls})
             for c in calls:
@@ -156,14 +165,52 @@ def agent(state):
                 except json.JSONDecodeError:
                     args = {}
                 result = core.run_tool(ctx, fn.get("name"), args)
-                if result.get("ok") and result.get("message"):
-                    done.append(result["message"])
+                if result.get("ok"):
+                    ran.add(fn.get("name"))
+                    if result.get("safety") and result["safety"] not in safety:
+                        safety.append(result["safety"])
+                    if result.get("message"):
+                        done.append(result["message"])
                 messages.append({"role": "tool", "tool_call_id": c.get("id", ""), "content": json.dumps(result, default=str)})
     except LLM.LLMUnavailable as e:
         log.warning("LLM unavailable, %s: %s", "using tool results" if done else "offline router", e)
     if done:
         return {"reply": "\n\n".join(done), "mode": "tools"}
     return {"mode": "offline"}
+
+
+# Live finding (Groq/qwen): a model said "book kar diya" without calling book_service, and invented a driving score.
+# Prompts are not a guarantee, so replies are checked: claimed actions need the tool, numbers need a source.
+CLAIMS = [
+    (r"book kar (diya|di|liya|li)|booking (ho gayi|kar di)|\bbooked\b", {"book_service", "my_bookings",
+                                                                         "upcoming_bookings"}),
+    (r"report (ban|bana|darj)|report kar (diya|di)|\breported\b", {"report_issue", "report_emergency",
+                                                                   "pretrip_check", "open_issues"}),
+    (r"approve kar (diya|di)|approve ho (gayi|gaya)", {"approve_booking"}),
+    (r"resolve kar (diya|di)|resolve ho (gaya|gayi)", {"resolve_issue"}),
+    (r"fuel log|log kar (diya|di)|darj kar (diya|di)", {"log_fuel", "start_shift", "report_issue"}),
+]
+_NUMBER = re.compile(r"\d+(?:[.,:]\d+)*")
+
+
+def _numbers(text):
+    return {part.lstrip("0") or "0" for tok in _NUMBER.findall(text) for part in re.split(r"[.,:]", tok)}
+
+
+def ungrounded(reply, ran, sources):
+    """Why the reply cannot be trusted, or None. `sources` = everything the model was given this turn (system
+    prompt, history, user text, tool results)."""
+    low = reply.lower()
+    for pattern, tools in CLAIMS:
+        if re.search(pattern, low) and not ran & tools:
+            return f"claims '{re.search(pattern, low).group(0)}' without {sorted(tools)[0]}"
+    invented = _numbers(reply) - _numbers(sources)
+    return f"numbers not from any tool: {sorted(invented)[:5]}" if invented else None
+
+
+def _letters(text):
+    """Comparable form: models re-type emoji (with/without variation selectors), spaces and punctuation."""
+    return re.sub(r"[^a-z0-9]", "", text.lower())
 
 
 def plain(text):

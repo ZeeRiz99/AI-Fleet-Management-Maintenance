@@ -6,6 +6,7 @@ script, which the LLM agent still understands. Both are free tiers; voice length
 import base64
 import json
 import os
+import time
 import urllib.request
 import uuid
 
@@ -71,23 +72,32 @@ class GroqWhisper:
 
 
 class Transcriber:
-    def __init__(self, engines):
+    COOLDOWN_S = 120  # like the LLM chain: a busy/timed-out engine is skipped for a while
+
+    def __init__(self, engines, clock=time.monotonic):
         self.engines = list(engines)
         self.last_used = None
+        self.clock = clock
+        self.resting = {}
 
     def __bool__(self):
         return bool(self.engines)
 
     def transcribe(self, audio, mime="audio/ogg"):
         errors = []
-        for e in self.engines:
+        now = self.clock()
+        ready = [i for i in range(len(self.engines)) if self.resting.get(i, 0) <= now]
+        for i in ready or range(len(self.engines)):
+            e = self.engines[i]
             try:
                 text = e.transcribe(audio, mime)
                 if text:
                     self.last_used = e.name
+                    self.resting.pop(i, None)
                     return text
                 errors.append(f"{e.name}: empty")
-            except Exception as ex:  # quota, network, bad key: try the next engine
+            except Exception as ex:  # quota, network, bad key: rest it and try the next engine
+                self.resting[i] = self.clock() + self.COOLDOWN_S
                 errors.append(f"{e.name}: {type(ex).__name__}")
         raise SpeechUnavailable("; ".join(errors) or "no speech engine configured")
 

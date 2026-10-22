@@ -14,10 +14,24 @@ class LLMUnavailable(Exception):
     pass
 
 
+def nullable_optionals(tools):
+    """Copy of the tool schemas where optional parameters also accept null. Some models send null for 'not given'
+    and Groq rejects that against a plain schema (400 tool_use_failed); run_tool then drops the nulls."""
+    out = []
+    for t in tools:
+        fn = dict(t["function"])
+        params = dict(fn.get("parameters") or {})
+        required = set(params.get("required") or [])
+        params["properties"] = {k: (v if k in required or "type" not in v else {**v, "type": [v["type"], "null"]})
+                                for k, v in (params.get("properties") or {}).items()}
+        out.append({**t, "function": {**fn, "parameters": params}})
+    return out
+
+
 class Provider:
-    def __init__(self, name, base_url, api_key, model, transport=None, timeout=40):
+    def __init__(self, name, base_url, api_key, model, transport=None, timeout=40, nullable=False):
         self.name, self.base_url, self.api_key, self.model = name, base_url.rstrip("/"), api_key, model
-        self.timeout = timeout
+        self.timeout, self.nullable = timeout, nullable
         self.transport = transport or self._http
 
     def _http(self, url, headers, payload):
@@ -28,8 +42,8 @@ class Provider:
     def chat(self, messages, tools=None):
         payload = {"model": self.model, "messages": messages, "temperature": 0.2}
         if tools:
-            payload["tools"] = tools
-        headers = {"Content-Type": "application/json"}
+            payload["tools"] = nullable_optionals(tools) if self.nullable else tools
+        headers = {"Content-Type": "application/json", "User-Agent": "fleetlog-ai/1.0"}  # Groq's CDN rejects urllib's UA
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
         body = self.transport(f"{self.base_url}/chat/completions", headers, payload)
@@ -69,8 +83,10 @@ class Chain:
                 self.resting.pop(i, None)
                 return msg
             except Exception as e:  # quota, network, bad key: rest it and try the next provider
-                self.resting[i] = self.clock() + self.COOLDOWN_S
-                errors.append(f"{p.name}({p.model}): {type(e).__name__}")
+                code = getattr(e, "code", None)
+                if code != 400:  # a 400 is about this request (e.g. a malformed tool call), not the provider
+                    self.resting[i] = self.clock() + self.COOLDOWN_S
+                errors.append(f"{p.name}({p.model}): {type(e).__name__}{f' {code}' if code else ''}")
         raise LLMUnavailable("; ".join(errors) or "no provider configured")
 
 
@@ -87,8 +103,9 @@ def from_env():
             providers.append(Provider("gemini", "https://generativelanguage.googleapis.com/v1beta/openai",
                                       env("GEMINI_API_KEY") or env("GOOGLE_API_KEY"), m, timeout=25))
     if env("GROQ_API_KEY"):
-        for m in models(env("OPS_GROQ_MODEL", "openai/gpt-oss-120b")):
-            providers.append(Provider("groq", "https://api.groq.com/openai/v1", env("GROQ_API_KEY"), m, timeout=25))
+        for m in models(env("OPS_GROQ_MODEL", "openai/gpt-oss-120b,qwen/qwen3.8-27b")):
+            providers.append(Provider("groq", "https://api.groq.com/openai/v1", env("GROQ_API_KEY"), m, timeout=25,
+                                      nullable=True))
     if env("OLLAMA_BASE_URL"):  # e.g. http://localhost:11434/v1 (only reachable when the laptop runs it)
         providers.append(Provider("ollama", env("OLLAMA_BASE_URL"), None, env("OPS_OLLAMA_MODEL", "qwen2.5:3b"),
                                   timeout=120))

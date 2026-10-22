@@ -150,7 +150,7 @@ def run_tool(ctx, name, args):
     if ctx.role not in spec["roles"]:
         return {"ok": False, "error": "Ye kaam aap ke role ke liye nahi hai.", "message": "Ye kaam aap ke role ke liye nahi hai."}
     try:
-        return spec["fn"](ctx, **(args or {}))
+        return spec["fn"](ctx, **{k: v for k, v in (args or {}).items() if v is not None})  # null = not given
     except TypeError as e:
         return {"ok": False, "error": f"Bad arguments: {e}"}
     except ValueError as e:
