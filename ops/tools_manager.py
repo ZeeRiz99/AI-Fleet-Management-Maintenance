@@ -61,6 +61,10 @@ def build_brief(ctx):
     lines += [f"   • {r['registration']}: {core.pkr(r['excess_cost_pkr'])}" for r in fuel["top_vehicles"][:3]]
     lines.append(f"🧾 Driver reports (24 ghante): {len(issues)}" + (f" ({sum(i['escalated'] for i in issues)} urgent)" if issues else ""))
     lines.append(f"🔧 Bookings (48 ghante): {len(soon)}")
+    pending = [b for b in core.list_records(ctx.store, "booking") if b["status"] == "pending_approval"]
+    if pending:
+        lines.append(f"⏳ Approval ka intezar: {len(pending)} ({', '.join(b['id'] for b in pending[:5])}); "
+                     f"'approve BK-…' likhein.")
     lines.append("ℹ️ Risk aur fuel data simulated demo fleet ka hai (1 Jan 2026 tak); reports aur bookings live hain.")
     return {"date": ctx.now.date().isoformat(), "high_risk": [
                 {k: v[k] for k in ("registration", "risk_prob", "recommended_service", "net_saving_pkr")} for v in high],

@@ -4,6 +4,7 @@ GET  /                   what this service is (no data)
 GET  /health             liveness + which pieces are configured (never any secret values)
 POST /webhooks/telegram  Telegram updates; only requests carrying our secret token are accepted
 POST /api/chat           the Android app's "Ask FleetLog AI" screen (X-App-Key header)
+GET  /cron/morning       daily brief + reminders (Vercel Cron, Authorization: Bearer CRON_SECRET)
 """
 import hmac
 import logging
@@ -14,7 +15,7 @@ from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
-from . import brain, channels, env, telegram
+from . import brain, channels, env, jobs, telegram
 
 env.load()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -75,6 +76,18 @@ async def telegram_webhook(request: Request, x_telegram_bot_api_secret_token: st
     status = await run_in_threadpool(telegram.handle_update, update, bot=bot)
     log.info("telegram update %s -> %s", update.get("update_id"), status)
     return {"ok": True}
+
+
+@app.get("/cron/morning")
+def cron_morning(authorization: str = Header(default="")):
+    """Vercel Cron (vercel.json): manager brief + driver reminders. Vercel sends 'Bearer <CRON_SECRET>'."""
+    if not _same(authorization.removeprefix("Bearer ").strip(), os.environ.get("CRON_SECRET", "")):
+        raise HTTPException(401, "unauthorized")
+    d = brain._defaults()
+    summary, events = jobs.morning(d["store"], d["settings"])
+    summary["sent"] = channels.deliver(events, telegram_bot=_bot())
+    log.info("morning job: %s", summary)
+    return summary
 
 
 class ChatIn(BaseModel):

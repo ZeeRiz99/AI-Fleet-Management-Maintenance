@@ -30,6 +30,7 @@ def set_my_vehicle(ctx, registration):
         raise ValueError(f"'{registration}' fleet mein nahi mili. Number dobara check karein (jaise LEA-22-2030).")
     ctx.profile["registration"] = reg
     ctx.save_profile()
+    ctx.store.sadd("drivers", ctx.user_id)  # reminder targets for the morning job
     return {"ok": True, "registration": reg, "city": v["city"],
             "message": f"✅ Theek hai, aap {reg} ({v['make_model']}, {v['city']}) chala rahe hain."}
 
