@@ -62,11 +62,23 @@ def set_webhook(bot, base_url):
     info(bot)
 
 
+def _retry(fn, attempts=5, wait=3):
+    """Startup calls survive a network blip (VPN reconnects, a reset handshake)."""
+    for n in range(1, attempts + 1):
+        try:
+            return fn()
+        except Exception as e:
+            if n == attempts:
+                raise
+            print(f"Telegram not reachable ({type(e).__name__}); retry {n}/{attempts - 1}…", flush=True)
+            time.sleep(wait)
+
+
 def poll(bot):
-    bot.call("deleteWebhook", drop_pending_updates=False)
-    bot.call("setMyCommands", commands=COMMANDS)
-    info(bot)
-    print("Polling… message the bot on Telegram. Ctrl+C to stop.")
+    _retry(lambda: bot.call("deleteWebhook", drop_pending_updates=False))
+    _retry(lambda: bot.call("setMyCommands", commands=COMMANDS))
+    _retry(lambda: info(bot))
+    print("Polling… message the bot on Telegram. Ctrl+C to stop.", flush=True)
     offset = None
     while True:
         try:
