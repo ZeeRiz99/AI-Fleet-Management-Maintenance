@@ -60,7 +60,16 @@ def requirements():
     return "\n".join(line for line in lines if line and not line.startswith(("#", "uvicorn"))) + "\n"
 
 
+KEEP = (".vercel", ".env.local")  # the CLI's project link and its token survive rebuilds (never uploaded)
+
+
 def build(out=OUT):
+    keep = out.parent / ".vercel-keep"
+    shutil.rmtree(keep, ignore_errors=True)
+    for name in KEEP:
+        if (out / name).exists():
+            keep.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(out / name), str(keep / name))
     if out.exists():
         shutil.rmtree(out)
     shutil.copytree(ROOT / "ops", out / "ops", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
@@ -72,8 +81,13 @@ def build(out=OUT):
     (out / ".python-version").write_text("3.14\n", encoding="utf-8")
     (out / "vercel.json").write_text(json.dumps({"$schema": "https://openapi.vercel.sh/vercel.json",
                                                  "crons": [brief_cron()]}, indent=2) + "\n", encoding="utf-8")
-    (out / ".vercelignore").write_text("__pycache__/\n*.pyc\n.env\n", encoding="utf-8")
+    # never upload local secrets: .env, and the .env.local the CLI writes on `vercel link`
+    (out / ".vercelignore").write_text("__pycache__/\n*.pyc\n.env\n.env.*\n.vercel-keep/\n", encoding="utf-8")
     size = sum(f.stat().st_size for f in out.rglob("*") if f.is_file())
+    for name in KEEP:
+        if (keep / name).exists():
+            shutil.move(str(keep / name), str(out / name))
+    shutil.rmtree(keep, ignore_errors=True)
     return size
 
 

@@ -34,6 +34,8 @@ def test_bundle_is_self_contained_and_serves(tmp_path):
     assert json.loads((out / "vercel.json").read_text())["crons"][0]["path"] == "/cron/morning"
     assert "uvicorn" not in (out / "requirements.txt").read_text()
     assert not (out / ".env").exists() and not list(out.rglob("__pycache__"))
+    ignore = (out / ".vercelignore").read_text().splitlines()
+    assert ".env" in ignore and ".env.*" in ignore                      # the CLI's .env.local is never uploaded
     clean = {k: v for k, v in os.environ.items() if not k.startswith(("OPS_", "GEMINI", "GROQ", "TELEGRAM",
                                                                        "UPSTASH", "WHATSAPP", "FLEET_"))}
     clean.update(OPS_SQLITE_PATH=str(tmp_path / "ops.db"), FLEET_DB_PATH=str(out / "data" / "fleet.db"),
@@ -53,3 +55,14 @@ def test_env_names_cover_the_settings_used_on_vercel():
     for name in VB.REQUIRED + VB.OPTIONAL:
         assert name in code or name.startswith(("WHATSAPP", "OPS_EVENTS", "OPS_APP", "CRON", "OPS_BRIEF")), name
     assert not set(VB.LOCAL_ONLY) & set(VB.REQUIRED + VB.OPTIONAL)
+
+
+def test_rebuild_keeps_the_vercel_link(tmp_path):
+    out = tmp_path / "vercel"
+    VB.build(out)
+    (out / ".vercel").mkdir()
+    (out / ".vercel" / "project.json").write_text('{"projectId": "p"}')
+    (out / ".env.local").write_text("VERCEL_OIDC_TOKEN=x")
+    VB.build(out)
+    assert (out / ".vercel" / "project.json").exists() and (out / ".env.local").exists()
+    assert not (tmp_path / ".vercel-keep").exists()
