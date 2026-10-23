@@ -593,3 +593,17 @@ def test_safety_advice_not_doubled_when_the_model_retypes_it(env):
     say(env, "telegram:1", "driver LEA-22-2030")
     r = say(env, "telegram:1", "gaari garam ho gayi", chain=chain)
     assert r["reply"].count("Hifazat pehle") == 1
+
+
+def test_reworded_safety_advice_is_not_doubled(env):
+    """Live Telegram test: the model wrote its own 'Hifazat pehle' line and the original was added on top."""
+    reworded = "⚠️ Hifazat pehle: Gaari aahista chalayein, mehfooz jagah rok dein, aur brake ki halat check karein."
+    replies = [
+        {"role": "assistant", "content": None, "tool_calls": [{"id": "c1", "type": "function", "function": {
+            "name": "report_issue", "arguments": json.dumps({"description": "brake awaaz", "category": "brakes"})}}]},
+        {"role": "assistant", "content": reworded + "\nReport ISS-1001 ban gayi."},
+    ]
+    chain = L.Chain([L.Provider("gemini", "https://g", "k", "m", transport=scripted(replies, []))])
+    say(env, "telegram:1", "driver LEA-22-2030")
+    r = say(env, "telegram:1", "brake se bohat awaaz aa rahi hai", chain=chain)
+    assert r["reply"].count("Hifazat pehle") == 1 and r["reply"].startswith("⚠️ Hifazat pehle: Gaari")

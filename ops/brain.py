@@ -154,7 +154,8 @@ def agent(state):
                     log.warning("LLM reply rejected (%s): %s", chain.last_used, problem)
                     break
                 if text:  # safety advice always leads (spec), whatever the model wrote
-                    lead = [a for a in safety if _letters(a) not in _letters(text)]
+                    # live: the model re-worded the advice ("Gaari ... aur brake ..."), so any safety line counts
+                    lead = [] if "hifazatpehle" in _letters(text) else safety
                     return {"reply": "\n".join([*lead, text]), "mode": f"llm:{chain.last_used}"}
                 break
             messages.append({"role": "assistant", "content": msg.get("content") or "", "tool_calls": calls})
