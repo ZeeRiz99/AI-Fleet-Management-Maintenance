@@ -1,0 +1,97 @@
+"""FleetLog AI phase 3: the Vercel bundle is self-contained and serves /health without the repo around it."""
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+pytestmark = pytest.mark.skipif(not (ROOT / "data" / "fleet.db").exists(), reason="run the pipeline first")
+
+from ops import vercel_bundle as VB  # noqa: E402
+
+PROBE = """
+import json, sys
+sys.path.insert(0, ".")
+from fastapi.testclient import TestClient
+import index
+c = TestClient(index.app)
+h = c.get("/health").json()
+bad = c.post("/webhooks/telegram", json={"update_id": 1}).status_code
+mods = sorted({m.__file__ for m in sys.modules.values() if getattr(m, "__file__", None) and "Fleet Management AI" in m.__file__ and ".venv" not in m.__file__
+               and "build" not in m.__file__})
+print(json.dumps({"health": h, "unauthorised": bad, "outside": mods}))
+"""
+
+
+def test_bundle_is_self_contained_and_serves(tmp_path):
+    out = tmp_path / "vercel"
+    VB.build(out)
+    assert json.loads((out / "vercel.json").read_text())["crons"][0]["path"] == "/cron/morning"
+    assert "uvicorn" not in (out / "requirements.txt").read_text()
+    assert not (out / ".env").exists() and not list(out.rglob("__pycache__"))
+    ignore = (out / ".vercelignore").read_text().splitlines()
+    assert ".env" in ignore and ".env.*" in ignore                      # the CLI's .env.local is never uploaded
+    clean = {k: v for k, v in os.environ.items() if not k.startswith(("OPS_", "GEMINI", "GROQ", "TELEGRAM",
+                                                                       "UPSTASH", "WHATSAPP", "FLEET_"))}
+    clean.update(OPS_SQLITE_PATH=str(tmp_path / "ops.db"), FLEET_DB_PATH=str(out / "data" / "fleet.db"),
+                 OPS_LLM_PROVIDER="offline")
+    # -I: isolated mode (no PYTHONPATH, no script dir), run from the bundle like the Vercel runtime
+    r = subprocess.run([sys.executable, "-I", "-c", PROBE], cwd=out, env=clean, capture_output=True, text=True,
+                       timeout=120)
+    assert r.returncode == 0, r.stderr[-2000:]
+    got = json.loads(r.stdout.strip().splitlines()[-1])
+    assert got["health"]["ok"] and got["health"]["llm"] == "offline"
+    assert got["unauthorised"] == 403                       # no secret configured: webhook stays closed
+    assert got["outside"] == []                              # nothing imported from the repo outside the bundle
+
+
+def test_env_names_cover_the_settings_used_on_vercel():
+    code = "".join(p.read_text(encoding="utf-8") for p in (ROOT / "ops").glob("*.py") if p.name != "vercel_bundle.py")
+    for name in VB.REQUIRED + VB.OPTIONAL:
+        assert name in code or name.startswith(("WHATSAPP", "OPS_EVENTS", "OPS_APP", "CRON", "OPS_BRIEF")), name
+    assert not set(VB.LOCAL_ONLY) & set(VB.REQUIRED + VB.OPTIONAL)
+
+
+def test_rebuild_keeps_the_vercel_link(tmp_path):
+    out = tmp_path / "vercel"
+    VB.build(out)
+    (out / ".vercel").mkdir()
+    (out / ".vercel" / "project.json").write_text('{"projectId": "p"}')
+    (out / ".env.local").write_text("VERCEL_OIDC_TOKEN=x")
+    VB.build(out)
+    assert (out / ".vercel" / "project.json").exists() and (out / ".env.local").exists()
+    assert not (tmp_path / ".vercel-keep").exists()
+
+
+def test_failed_rebuild_still_restores_the_link(tmp_path, monkeypatch):
+    """Live: Windows refused to delete the folder mid-rebuild, the link stayed parked, and the next deploy created
+    a new project. The link must be back in place even when the rebuild fails."""
+    out = tmp_path / "vercel"
+    VB.build(out)
+    (out / ".vercel").mkdir()
+    (out / ".vercel" / "project.json").write_text('{"projectName": "fleetlog-ai"}')
+    real_copytree = VB.shutil.copytree
+
+    def locked(*a, **k):
+        raise PermissionError("[WinError 32] in use by another process")
+
+    monkeypatch.setattr(VB.shutil, "copytree", locked)
+    with pytest.raises(PermissionError):
+        VB.build(out)
+    assert VB.linked_project(out) == "fleetlog-ai" and not (tmp_path / ".vercel-keep").exists()
+    monkeypatch.setattr(VB.shutil, "copytree", real_copytree)
+
+
+def test_deploy_refuses_without_the_right_link(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(VB, "OUT", tmp_path / "vercel")
+    monkeypatch.setattr(VB, "build", lambda out=None: 0)
+    monkeypatch.setattr(VB.subprocess, "run", lambda *a, **k: calls.append(a))
+    with pytest.raises(SystemExit, match="Not linked"):
+        VB.deploy()
+    assert calls == []                                       # the CLI never ran: no stray project

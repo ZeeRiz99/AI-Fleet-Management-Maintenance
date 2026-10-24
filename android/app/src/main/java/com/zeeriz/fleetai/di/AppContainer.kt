@@ -7,6 +7,7 @@ import com.zeeriz.fleetai.data.local.ResponseCache
 import com.zeeriz.fleetai.data.local.SettingsStore
 import com.zeeriz.fleetai.data.remote.ApiProvider
 import com.zeeriz.fleetai.data.remote.GitHubFleetApi
+import com.zeeriz.fleetai.data.repository.AssistantRepository
 import com.zeeriz.fleetai.data.repository.FleetRepository
 import com.zeeriz.fleetai.data.repository.Session
 import kotlinx.coroutines.CoroutineScope
@@ -30,6 +31,7 @@ class AppContainer(context: Context) {
         cache = ResponseCache(appContext),
         session = session,
     )
+    val assistant = AssistantRepository(settings, BuildConfig.ASSISTANT_URL, BuildConfig.ASSISTANT_KEY)
 
     init {
         // Keep the session snapshot in sync with saved settings (e.g. server address changed in Profile).

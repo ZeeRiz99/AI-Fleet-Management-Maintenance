@@ -7,6 +7,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.zeeriz.fleetai.BuildConfig
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import java.util.UUID
 
 private val Context.dataStore by preferencesDataStore(name = "fleet_settings")
 
@@ -75,7 +76,21 @@ class SettingsStore(private val context: Context) {
         }
     }
 
+    /** Random id for the FleetLog AI chat (created on first use, kept until the user starts over). */
+    suspend fun assistantSession(): String {
+        var id: String? = null
+        context.dataStore.edit { p ->
+            id = p[ASSISTANT_SESSION] ?: UUID.randomUUID().toString().also { p[ASSISTANT_SESSION] = it }
+        }
+        return checkNotNull(id)
+    }
+
+    suspend fun resetAssistantSession() {
+        context.dataStore.edit { it.remove(ASSISTANT_SESSION) }
+    }
+
     private companion object {
+        val ASSISTANT_SESSION = stringPreferencesKey("assistant_session")
         val THEME = stringPreferencesKey("theme_mode")
         val DATA_SOURCE = stringPreferencesKey("data_source")
         val SERVER_URL = stringPreferencesKey("server_url")

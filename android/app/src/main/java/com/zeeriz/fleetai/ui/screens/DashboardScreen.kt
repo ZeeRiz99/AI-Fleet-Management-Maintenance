@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -68,6 +69,7 @@ data class DashboardActions(
     val openFuel: () -> Unit,
     val openDrivers: () -> Unit,
     val openTrips: () -> Unit,
+    val openAssistant: () -> Unit,
 )
 
 @Composable
@@ -77,6 +79,13 @@ fun DashboardScreen(actions: DashboardActions, viewModel: DashboardViewModel = v
         title = "Dashboard",
         subtitle = state.data?.let { "Scored as of ${Format.date(it.asOf)} · simulated fleet" },
         actions = { IconButton(onClick = { viewModel.load(refresh = true) }) { Icon(Icons.Filled.Refresh, "Refresh") } },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = actions.openAssistant,
+                icon = { Icon(FleetIcons.Sparkle, contentDescription = null) },
+                text = { Text("Ask FleetLog AI") },
+            )
+        },
     ) { padding ->
         StateContent(
             state = state,
@@ -84,7 +93,11 @@ fun DashboardScreen(actions: DashboardActions, viewModel: DashboardViewModel = v
             onRefresh = { viewModel.load(refresh = true) },
             modifier = Modifier.padding(padding),
         ) { data ->
-            LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            // bottom padding keeps the last card clear of the "Ask FleetLog AI" button
+            LazyColumn(
+                contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 88.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
                 if (state.offlineSince != null || state.error != null) item { DataStatusBanner(state) }
                 item { FleetStatusGrid(data, actions) }
                 item { QuickLinks(actions) }

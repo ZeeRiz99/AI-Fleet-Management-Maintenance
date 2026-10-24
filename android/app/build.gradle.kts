@@ -8,9 +8,10 @@ plugins {
 
 // Release signing: local.properties (git-ignored) may point to a properties file kept OUTSIDE the repo with
 // storeFile / storePassword / keyAlias / keyPassword. Without it the release build is simply unsigned.
-val signingProps: Properties? = rootProject.file("local.properties").takeIf { it.exists() }
-    ?.let { f -> Properties().apply { f.inputStream().use(::load) } }
-    ?.getProperty("fleetai.signing")
+val localProps: Properties = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use(::load)
+}
+val signingProps: Properties? = localProps.getProperty("fleetai.signing")
     ?.let { file(it) }?.takeIf { it.exists() }
     ?.let { f -> Properties().apply { f.inputStream().use(::load) } }
 
@@ -26,8 +27,8 @@ android {
         applicationId = "com.zeeriz.fleetai"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
 
         // Default FastAPI address: 10.0.2.2 is the laptop as seen from the Android emulator.
         // A real phone on the same Wi-Fi uses http://<laptop-ip>:8000 (changeable in Profile > Server).
@@ -38,6 +39,10 @@ android {
         buildConfigField("String", "DEFAULT_DATA_SOURCE", "\"GITHUB\"")
         buildConfigField("String", "DASHBOARD_URL", "\"https://ai-fleet-management.streamlit.app/\"")
         buildConfigField("String", "REPO_URL", "\"https://github.com/ZeeRiz99/AI-Fleet-Management-Maintenance\"")
+        // FleetLog AI chat (ops/web.py on Vercel). From local.properties (git-ignored): fleetlog.url, fleetlog.appKey.
+        // The app key is a soft gate that ships inside the APK; server-side limits protect the free AI quotas.
+        buildConfigField("String", "ASSISTANT_URL", "\"${localProps.getProperty("fleetlog.url", "")}\"")
+        buildConfigField("String", "ASSISTANT_KEY", "\"${localProps.getProperty("fleetlog.appKey", "")}\"")
     }
 
     buildFeatures {

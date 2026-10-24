@@ -11,6 +11,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.zeeriz.fleetai.ui.screens.AlertsScreen
+import com.zeeriz.fleetai.ui.screens.AssistantScreen
 import com.zeeriz.fleetai.ui.screens.DashboardActions
 import com.zeeriz.fleetai.ui.screens.DashboardScreen
 import com.zeeriz.fleetai.ui.screens.DriverDetailScreen
@@ -39,6 +40,7 @@ fun FleetNavHost(
         openFuel = { navController.navigate(Routes.FUEL) },
         openDrivers = { navController.navigate(Routes.DRIVERS) },
         openTrips = { navController.navigate(Routes.TRIPS) },
+        openAssistant = { navController.navigate(Routes.ASSISTANT) },
     )
     NavHost(
         navController = navController,
@@ -68,5 +70,6 @@ fun FleetNavHost(
             arguments = listOf(navArgument(Routes.DRIVER_ID) { type = NavType.IntType }),
         ) { DriverDetailScreen(onBack = back, onOpenVehicle = openVehicle) }
         composable(Routes.TRIPS) { TripsScreen(onBack = back, onOpenVehicle = openVehicle) }
+        composable(Routes.ASSISTANT) { AssistantScreen(onBack = back) }
     }
 }

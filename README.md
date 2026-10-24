@@ -4,6 +4,8 @@
 
 **Android app:** [download the APK](https://github.com/ZeeRiz99/AI-Fleet-Management-Maintenance/releases/latest) · [app README](android/README.md)
 
+**FleetLog AI (Telegram bot + AI agent):** [t.me/zeeriz_bot](https://t.me/zeeriz_bot) · [what it does](#fleetlog-ai--ai-fleet-log-assistant)
+
 <p>
   <img src="android/docs/screenshots/01-dashboard.png" width="180" alt="Android dashboard">
   <img src="android/docs/screenshots/02-ai-prediction.png" width="180" alt="AI prediction">
@@ -101,6 +103,65 @@ info, per-vehicle fuel baselines). The Android app reads these from GitHub by de
 writes that need the model (record a service → re-score) still need the live server. A test fails if the snapshot
 gets out of date: re-run the export after retraining or regenerating data, then commit `static-api/`.
 
+## FleetLog AI — AI Fleet Log Assistant
+
+Drivers don't fill forms; they send WhatsApp/Telegram voice notes. FleetLog AI turns those messages into fleet
+records and actions: a driver reports a problem in Roman Urdu (text or voice), gets safety advice first, the issue is
+scored with this project's breakdown model, the manager is alerted with buttons, and the driver books a workshop slot
+that the manager approves with one tap. Every morning the manager gets a brief.
+
+**Try it:** open [t.me/zeeriz_bot](https://t.me/zeeriz_bot) → `driver LEA-22-2030` → `brake se bohat awaaz aa rahi hai`
+→ `kal subah slot` → `pehla wala` → `manager` → ✅ Approve → `brief`. (Demo mode: you also see the manager's copy.)
+
+<table>
+  <tr>
+    <td><img src="docs/fleetlog-ai/screenshots/01-driver-report-manager-alert.png" width="420" alt="Driver report and manager alert"></td>
+    <td><img src="docs/fleetlog-ai/screenshots/02-voice-note-slots.png" width="420" alt="Voice note, duplicate guard and workshop slots"></td>
+  </tr>
+  <tr>
+    <td>Driver report → safety advice, issue ISS-1002, AI risk 53 %, manager alert with buttons</td>
+    <td>Voice note transcribed; the same problem is not reported twice; free workshop slots</td>
+  </tr>
+  <tr>
+    <td><img src="docs/fleetlog-ai/screenshots/03-manager-approve.png" width="420" alt="Manager approves, driver is told"></td>
+    <td><img src="docs/fleetlog-ai/screenshots/04-morning-brief.png" width="420" alt="Morning brief"></td>
+  </tr>
+  <tr>
+    <td>Manager approves BK-2001 → the driver gets the confirmation</td>
+    <td>Morning brief: high-risk vehicles, Rs saving, fuel suspects, reports, bookings</td>
+  </tr>
+</table>
+
+```mermaid
+flowchart LR
+    D["Driver<br/>text / voice / location"] --> CH["Telegram · WhatsApp · Android app"]
+    CH --> W["Webhook on Vercel<br/>(ops/web.py)"]
+    W --> B["LangGraph brain<br/>guard → identify → agent | offline"]
+    B --> T["Role-scoped tools<br/>report · slots · book · fuel · score<br/>brief · plan · approve"]
+    T --> M[("Risk model + SHAP<br/>alerts.csv, fleet.db")]
+    T --> S[("Upstash Redis<br/>issues, bookings, history")]
+    B --> MG["Manager alert<br/>Approve / Call buttons"]
+    C["Vercel Cron 08:00 PKT"] --> BR["Brief + reminders"]
+```
+
+What is behind it (all in [`ops/`](ops/README.md)):
+
+* **Agent:** LangGraph workflow; LLM chain Gemini → Groq through the OpenAI-compatible API, with a keyword router as the
+  offline fallback, so the bot keeps working when free quotas run out.
+* **Guards learned from live tests:** replies that claim an action the model did not take, or numbers no tool returned,
+  are rejected; safety advice always comes first; one report per problem; a slot is locked atomically (no double booking);
+  drivers only ever see their own vehicle.
+* **Channels:** Telegram (webhook, secret-checked), WhatsApp Cloud API (signature-checked), and an "Ask FleetLog AI" chat
+  screen in the Android app; voice notes via Gemini audio / Groq Whisper.
+* **Hosting (free tiers):** Vercel Hobby (serverless Python) + Upstash Redis; daily cron for the brief.
+
+**Status, honestly:** Telegram, the AI agent, voice notes, the brief and the Vercel deployment are live-tested
+(Oct 2026). The WhatsApp channel and the app's chat screen are built and unit-tested but not yet tested live. Risk and fuel
+figures come from the simulated fleet scored as of 1 Jan 2026; reports and bookings are live. Vercel Hobby is for
+non-commercial use; a client deployment needs paid plans (see [ops/README.md](ops/README.md)).
+
+<img src="docs/fleetlog-ai/screenshots/05-test-results.png" width="560" alt="Test results">
+
 ## Project layout
 
 | Path | Purpose |
@@ -117,7 +178,9 @@ gets out of date: re-run the export after retraining or regenerating data, then 
 | `app/streamlit_app.py` | dashboard |
 | `api/` | FastAPI backend for the Android app (`main.py` routes, `fleet.py` service, `schemas.py`, `security.py`, `export_static.py`) |
 | `static-api/v1/` | read-only JSON snapshot of the API, read by the Android app's default "GitHub data" mode |
-| `android/` | FleetAI Android app (Kotlin, Jetpack Compose, MVVM) |
+| `android/` | FleetLog AI Android app (Kotlin, Jetpack Compose, MVVM) |
+| `ops/` | FleetLog AI agent: LangGraph brain, tools, Telegram/WhatsApp channels, web app for Vercel ([ops/README.md](ops/README.md)) |
+| `docs/fleetlog-ai/` | FleetLog AI spec, screenshots, optional Google Sheets event log |
 | `tests/` | data integrity, no-leakage, label, model, alert and assistant tests |
 
 ## Data: hybrid, and what that means
