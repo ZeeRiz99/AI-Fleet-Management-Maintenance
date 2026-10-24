@@ -620,3 +620,9 @@ def test_acknowledgements_get_a_short_reply_not_a_report(env, text):
 def test_real_questions_are_not_mistaken_for_acks(env):
     from ops import router
     assert not router.is_ack("haan brake kharab hai") and not router.is_ack("1") and router.is_ack("🙏🙏")
+
+
+def test_plain_strips_single_asterisks_but_keeps_math():
+    assert brain.plain("Status: *service_booked* (pending)") == "Status: service_booked (pending)"
+    assert brain.plain("2 * 3 = 6 and 5*4") == "2 * 3 = 6 and 5*4"
+    assert brain.plain("* first\n* second") == "• first\n• second"

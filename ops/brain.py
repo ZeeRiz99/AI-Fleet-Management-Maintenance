@@ -221,6 +221,7 @@ def plain(text):
     text = re.sub(r"\*\*(.+?)\*\*|__(.+?)__", lambda m: m.group(1) or m.group(2), text)
     text = re.sub(r"(?m)^#{1,6}\s*", "", text)
     text = re.sub(r"(?m)^(\s*)[*-]\s+", r"\1• ", text)
+    text = re.sub(r"(?<![\w*])\*(?=\S)([^*\n]+?)(?<=\S)\*(?![\w*])", r"\1", text)  # *single* (live: *service_booked*)
     return text.strip()
 
 
