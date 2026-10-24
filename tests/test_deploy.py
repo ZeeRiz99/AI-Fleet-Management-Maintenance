@@ -66,3 +66,32 @@ def test_rebuild_keeps_the_vercel_link(tmp_path):
     VB.build(out)
     assert (out / ".vercel" / "project.json").exists() and (out / ".env.local").exists()
     assert not (tmp_path / ".vercel-keep").exists()
+
+
+def test_failed_rebuild_still_restores_the_link(tmp_path, monkeypatch):
+    """Live: Windows refused to delete the folder mid-rebuild, the link stayed parked, and the next deploy created
+    a new project. The link must be back in place even when the rebuild fails."""
+    out = tmp_path / "vercel"
+    VB.build(out)
+    (out / ".vercel").mkdir()
+    (out / ".vercel" / "project.json").write_text('{"projectName": "fleetlog-ai"}')
+    real_copytree = VB.shutil.copytree
+
+    def locked(*a, **k):
+        raise PermissionError("[WinError 32] in use by another process")
+
+    monkeypatch.setattr(VB.shutil, "copytree", locked)
+    with pytest.raises(PermissionError):
+        VB.build(out)
+    assert VB.linked_project(out) == "fleetlog-ai" and not (tmp_path / ".vercel-keep").exists()
+    monkeypatch.setattr(VB.shutil, "copytree", real_copytree)
+
+
+def test_deploy_refuses_without_the_right_link(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(VB, "OUT", tmp_path / "vercel")
+    monkeypatch.setattr(VB, "build", lambda out=None: 0)
+    monkeypatch.setattr(VB.subprocess, "run", lambda *a, **k: calls.append(a))
+    with pytest.raises(SystemExit, match="Not linked"):
+        VB.deploy()
+    assert calls == []                                       # the CLI never ran: no stray project

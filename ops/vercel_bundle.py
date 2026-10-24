@@ -2,6 +2,7 @@
 
     python -m ops.vercel_bundle                 build build/vercel (git-ignored)
     python -m ops.vercel_bundle --env-names     which environment variables Vercel needs (names only)
+    python -m ops.vercel_bundle --deploy        build + deploy to production (refuses unless linked to fleetlog-ai)
     python -m ops.vercel_bundle --push-env      copy those values from .env into the linked Vercel project
                                                 (through the Vercel CLI's stdin: values are never printed)
 
@@ -21,6 +22,7 @@ import sys
 from . import ROOT, env
 
 CLI = "vercel@63.1.2"
+PROJECT = "fleetlog-ai"
 OUT = ROOT / "build" / "vercel"
 FILES = ["src/config.py", "src/db.py", "src/agent.py", "data/fleet.db", "data/processed/alerts.csv",
          "data/processed/fuel_anomalies.csv", "static-api/v1/fuel/baselines.json"]
@@ -63,32 +65,59 @@ def requirements():
 KEEP = (".vercel", ".env.local")  # the CLI's project link and its token survive rebuilds (never uploaded)
 
 
-def build(out=OUT):
+def build(out=None):
+    """Rebuild `out` from the repo. The CLI link and token are parked beside it and put back even if the rebuild
+    fails half-way (Windows can refuse to delete a folder another process is reading)."""
+    out = out or OUT
     keep = out.parent / ".vercel-keep"
-    shutil.rmtree(keep, ignore_errors=True)
-    for name in KEEP:
-        if (out / name).exists():
-            keep.mkdir(parents=True, exist_ok=True)
+    keep.mkdir(parents=True, exist_ok=True)
+    for name in KEEP:  # a link parked by an interrupted build wins over whatever is in `out` now
+        if (out / name).exists() and not (keep / name).exists():
             shutil.move(str(out / name), str(keep / name))
-    if out.exists():
-        shutil.rmtree(out)
-    shutil.copytree(ROOT / "ops", out / "ops", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
-    for rel in FILES:
-        (out / rel).parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(ROOT / rel, out / rel)
-    (out / "index.py").write_text(INDEX, encoding="utf-8")
-    (out / "requirements.txt").write_text(requirements(), encoding="utf-8")
-    (out / ".python-version").write_text("3.14\n", encoding="utf-8")
-    (out / "vercel.json").write_text(json.dumps({"$schema": "https://openapi.vercel.sh/vercel.json",
-                                                 "crons": [brief_cron()]}, indent=2) + "\n", encoding="utf-8")
-    # never upload local secrets: .env, and the .env.local the CLI writes on `vercel link`
-    (out / ".vercelignore").write_text("__pycache__/\n*.pyc\n.env\n.env.*\n.vercel-keep/\n", encoding="utf-8")
-    size = sum(f.stat().st_size for f in out.rglob("*") if f.is_file())
-    for name in KEEP:
-        if (keep / name).exists():
-            shutil.move(str(keep / name), str(out / name))
-    shutil.rmtree(keep, ignore_errors=True)
-    return size
+    try:
+        if out.exists():
+            shutil.rmtree(out)
+        shutil.copytree(ROOT / "ops", out / "ops", ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+        for rel in FILES:
+            (out / rel).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(ROOT / rel, out / rel)
+        (out / "index.py").write_text(INDEX, encoding="utf-8")
+        (out / "requirements.txt").write_text(requirements(), encoding="utf-8")
+        (out / ".python-version").write_text("3.14\n", encoding="utf-8")
+        (out / "vercel.json").write_text(json.dumps({"$schema": "https://openapi.vercel.sh/vercel.json",
+                                                     "crons": [brief_cron()]}, indent=2) + "\n", encoding="utf-8")
+        # never upload local secrets: .env, and the .env.local the CLI writes on `vercel link`
+        (out / ".vercelignore").write_text("__pycache__/\n*.pyc\n.env\n.env.*\n.vercel-keep/\n", encoding="utf-8")
+        return sum(f.stat().st_size for f in out.rglob("*") if f.is_file())
+    finally:
+        out.mkdir(parents=True, exist_ok=True)
+        for name in KEEP:
+            if (keep / name).exists():
+                if (out / name).exists():
+                    shutil.rmtree(out / name) if (out / name).is_dir() else (out / name).unlink()
+                shutil.move(str(keep / name), str(out / name))
+        shutil.rmtree(keep, ignore_errors=True)
+
+
+def linked_project(out=None):
+    try:
+        return json.loads(((out or OUT) / ".vercel" / "project.json").read_text(encoding="utf-8")).get("projectName")
+    except (OSError, ValueError):
+        return None
+
+
+def deploy(project=PROJECT):
+    """Build, then deploy to production only if the folder is linked to `project` (a missing link would make the
+    CLI create a new project named after the folder)."""
+    build()
+    if linked_project() != project:
+        sys.exit(f"Not linked to '{project}' (found {linked_project()!r}). Run:  cd {OUT} && npx {CLI} link "
+                 f"--yes --project {project}")
+    npx = shutil.which("npx") or "npx"
+    r = subprocess.run([npx, "--yes", CLI, "deploy", "--prod", "--yes"], cwd=OUT, text=True, capture_output=True)
+    if r.returncode != 0:
+        sys.exit("Deploy failed:\n" + (r.stderr or r.stdout)[-2000:])
+    print(f"Deployed {project}: https://{project}.vercel.app")
 
 
 def push_env():
@@ -121,6 +150,8 @@ def main(argv):
         print("Laptop only (not for Vercel):", ", ".join(LOCAL_ONLY))
     elif "--push-env" in argv:
         push_env()
+    elif "--deploy" in argv:
+        deploy()
     else:
         size = build()
         print(f"Built {OUT} ({size / 1e6:.1f} MB before dependencies). Deploy:\n"
