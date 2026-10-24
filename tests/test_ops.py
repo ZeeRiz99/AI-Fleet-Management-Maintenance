@@ -607,3 +607,16 @@ def test_reworded_safety_advice_is_not_doubled(env):
     say(env, "telegram:1", "driver LEA-22-2030")
     r = say(env, "telegram:1", "brake se bohat awaaz aa rahi hai", chain=chain)
     assert r["reply"].count("Hifazat pehle") == 1 and r["reply"].startswith("⚠️ Hifazat pehle: Gaari")
+
+
+@pytest.mark.parametrize("text", ["haan", "ok", "👍", "Shukriya!", "ji haan", "theek hai"])
+def test_acknowledgements_get_a_short_reply_not_a_report(env, text):
+    """Live Telegram test: 'haan' and '👍' in manager mode returned the whole fleet report."""
+    say(env, MANAGER, "manager")
+    r = say(env, MANAGER, text)
+    assert r["reply"].startswith("👍 Theek hai") and "Fleet:" not in r["reply"] and "brief" in r["reply"]
+
+
+def test_real_questions_are_not_mistaken_for_acks(env):
+    from ops import router
+    assert not router.is_ack("haan brake kharab hai") and not router.is_ack("1") and router.is_ack("🙏🙏")

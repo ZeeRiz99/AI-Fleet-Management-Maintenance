@@ -108,5 +108,26 @@ def manager(ctx, text):
     return legacy.answer_offline(text)  # existing data questions (risk, fuel, maintenance, drivers, a vehicle)
 
 
+ACK = re.compile(r"^(ok+|okay|theek( hai)?|thik( hai)?|haan+|han|ji+( haan)?|jee|yes|shukriya|thanks?( you)?|done|"
+                 r"acha|achha|great|nice)[\s.!]*$", re.I)
+
+
+def is_ack(text):
+    """'haan', 'ok', 'shukriya', or emoji only: an acknowledgement, not a question (live: '👍' got the fleet report)."""
+    t = text.strip()
+    return bool(ACK.match(t)) or (bool(t) and not any(ch.isalnum() for ch in t))
+
+
+def ack_reply(ctx):
+    if ctx.role == "driver":
+        hint = ("slot chahiye to number bhejein (jaise '1')" if ctx.profile.get("last_offer")
+                else "masla, fuel, shift ya 'slot' likhein")
+    else:
+        hint = "'brief', 'issues', 'bookings' ya 'budget 1 lakh' likhein"
+    return f"👍 Theek hai. Kuch aur ho to {hint}."
+
+
 def route(ctx, text):
+    if is_ack(text):
+        return ack_reply(ctx)
     return driver(ctx, text) if ctx.role == "driver" else manager(ctx, text)
