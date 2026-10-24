@@ -88,6 +88,16 @@ is unreachable, the last successful response is shown with an "Offline — showi
 
 The fleet data is simulated (hybrid of two public datasets + a generator); see the backend README for details and limits.
 
+## Ask FleetLog AI (v1.1, not released yet)
+
+Version 1.1 renames the app to **FleetLog AI** and adds a chat screen (Home → "Ask FleetLog AI") that talks to the same
+agent drivers and managers use on Telegram ([ops/README.md](../ops/README.md)): report a problem, book a workshop slot,
+approve bookings with the inline buttons, 🎤 voice input through the phone's own speech recogniser (typing still works
+on phones without one). Build settings in `local.properties` (git-ignored): `fleetlog.url` (the Vercel URL) and
+`fleetlog.appKey` (same value as `OPS_APP_KEY` on the server; a soft gate, since it ships inside the APK).
+Built and unit-tested (`AssistantContractTest` parses a real `/api/chat` response); not yet tested on a phone, and the
+released APK is still v1.0.
+
 ## Architecture
 
 MVVM, single activity, Jetpack Compose, unidirectional data flow.

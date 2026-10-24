@@ -135,20 +135,25 @@ Route `assistant`, opened from an ExtendedFloatingActionButton on the Dashboard;
 suggestion chips, chat bubbles, event cards. Voice in via RecognizerIntent (ur-PK / en-IN), voice out via TextToSpeech;
 **fallbacks**: if Urdu speech or the Urdu TTS voice is missing (e.g. Oppo A15), typing and English TTS still work.
 Follow existing patterns (FleetJson, ApiResult, DataStore, container factories, FleetScaffold, FleetIcons). App name
-"FleetAI" → "FleetLog AI" in this phase (v1.1 APK). Agent URL from `local.properties fleetai.agentUrl` or settings.
+"FleetAI" → "FleetLog AI" in this phase (v1.1 APK). Agent URL and soft app key from `android/local.properties` (`fleetlog.url`, `fleetlog.appKey`).
 Ask before starting the emulator.
 
 ## 8. Phases (stop after each: tests, summary, screenshots, wait for "ok")
-| # | Phase |
-|---|---|
-| 0 | Discover existing work — **done**: nothing to integrate (no ops/ code, no patch file, n8n not installed) |
-| 1 | Workflow core (LangGraph) + store + tools (driver + manager) + offline router + LLM layer with fakes + tests |
-| 2 | Telegram webhook + buttons + setup script + tests → local test through a tunnel |
-| 3 | Vercel bundle + deploy guide (verify free-tier limits) → live /health + full Telegram flow |
-| 5 | Android "Ask FleetLog AI" screen → build, test on phone |
-| 4 | Morning brief job (Vercel Cron) + optional n8n / Apps Script workflows |
-| 6 | WhatsApp → Meta test number |
-| 7 | Docs (ops/README, limits and honesty notes), README sections, CLAUDE.md; ask before pushing the branch |
+| # | Phase | Status (24 Oct 2026) |
+|---|---|---|
+| 0 | Discover existing work | **done**: nothing to integrate (no ops/ code, no patch file, n8n not installed) |
+| 1 | Workflow core (LangGraph) + store + tools (driver + manager) + offline router + LLM layer with fakes + tests | **done**, live with Gemini + Groq |
+| 2 | Telegram webhook + buttons + setup script + tests → local test | **done**, live-tested (laptop polling, then Vercel); no tunnel needed |
+| 3 | Vercel bundle + deploy guide (verify free-tier limits) → live /health + full Telegram flow | **done**: https://fleetlog-ai.vercel.app, Upstash us-east-1 |
+| 5 | Android "Ask FleetLog AI" screen → build, test on phone | built + unit-tested (v1.1 debug); emulator/phone test and release APK pending |
+| 4 | Morning brief job (Vercel Cron) + optional n8n / Apps Script workflows | **done**; brief live-tested; Apps Script sample instead of n8n |
+| 6 | WhatsApp → Meta test number | built + unit-tested; waiting for a Meta app |
+| 7 | Docs (ops/README, limits and honesty notes), README sections, CLAUDE.md; ask before pushing the branch | docs done; release APK + merge to main need the user's OK |
+
+Deviations from the plan, all from live tests: replies are checked against tool results (`brain.ungrounded`), safety
+advice is enforced in code, one report per problem, acknowledgements get a short reply, slot filters (date/part),
+several models per provider with a cooldown, Groq needs a User-Agent and nullable optional parameters, Upstash must sit
+next to Vercel (us-east-1), `api.telegram.org` needs a VPN from some Pakistani connections (the deployed bot does not).
 
 ## 9. Tests (pytest, all network faked)
 Registration normalisation; slots (Sunday, past, taken); store contract for SQLite and Redis (fake REST); full offline

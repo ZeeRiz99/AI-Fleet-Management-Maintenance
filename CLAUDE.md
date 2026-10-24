@@ -72,3 +72,19 @@ SQLite, not PostgreSQL. GPS/IoT is NOT in scope (future extension).
   retraining/regenerating data (`test_published_snapshot_matches_the_api` fails if stale). `render.yaml` and
   `requirements-api.txt` are kept for a future paid/hosted API.
 - Pushes to main redeploy the Streamlit site; always ask before pushing.
+
+## FleetLog AI agent (`ops/`, Oct 2026)
+- "AI Fleet Log Assistant": driver + manager agent on Telegram (live: @zeeriz_bot, display name "FleetLog AI"),
+  WhatsApp (built, not live) and the Android app's "Ask FleetLog AI" screen (v1.1, not yet phone-tested).
+  Spec: docs/fleetlog-ai/SPEC.md. Setup, limits, honest notes: ops/README.md.
+- Branch `feature/fleetlog-ai` (pushed). Merging to main redeploys Streamlit: ask first.
+- Deployed on Vercel Hobby (`fleetlog-ai`, https://fleetlog-ai.vercel.app) with Upstash Redis (us-east-1).
+  Deploy ONLY with `python -m ops.vercel_bundle --deploy` (refuses unless build/vercel is linked to fleetlog-ai; a bare
+  `vercel deploy` once created a stray project). Settings: `--push-env` (values via stdin, never printed).
+- Secrets live in `.env` (git-ignored); never print values, check them only by length/format. The user pastes keys.
+- LLM chain Gemini (3.8-flash, 3.5-flash) → Groq (gpt-oss-120b, qwen3.8-27b) → offline router. Every LLM reply is
+  checked against tool results (`brain.ungrounded`); keep those guards when changing prompts or tools.
+- `api.telegram.org` is blocked on the user's normal connection: laptop bot commands need ProtonVPN; the user keeps
+  Telegram itself on an MTProto proxy. Groq rejects VPN IPs.
+- Low RAM: run python with OPENBLAS_NUM_THREADS=1; Gradle with --no-daemon -Xmx1g, Kotlin in-process.
+- Tests: tests/test_ops.py, test_telegram.py, test_whatsapp.py, test_jobs.py, test_deploy.py (all faked, no network).
