@@ -48,6 +48,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -124,7 +126,12 @@ fun AssistantScreen(onBack: () -> Unit, viewModel: AssistantViewModel = viewMode
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 state.suggestions.forEach { s ->
-                    SuggestionChip(onClick = { viewModel.send(s) }, label = { Text(s) }, enabled = !state.sending)
+                    SuggestionChip(
+                        onClick = { viewModel.send(s) },
+                        label = { Text(s) },
+                        enabled = !state.sending,
+                        modifier = Modifier.semantics { contentDescription = s },
+                    )
                 }
             }
             Row(
@@ -180,7 +187,11 @@ private fun MessageBubble(message: ChatMessage, enabled: Boolean, onButton: (Cha
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     message.buttons.forEach { b ->
-                        OutlinedButton(onClick = { onButton(b) }, enabled = enabled) { Text(b.text) }
+                        OutlinedButton(
+                            onClick = { onButton(b) },
+                            enabled = enabled,
+                            modifier = Modifier.semantics { contentDescription = b.text },
+                        ) { Text(b.text) }
                     }
                 }
             }
