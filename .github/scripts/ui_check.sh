@@ -22,15 +22,27 @@ find_node() {
   dump | python3 -c '
 import re, sys, xml.etree.ElementTree as ET
 needle = sys.argv[1]
+low = needle.lower()
 root = ET.fromstring(sys.stdin.read() or "<x/>")
+best = None
 for n in root.iter("node"):
     a = n.attrib
-    hit = (a.get("class") == needle[6:]) if needle.startswith("class:") else \
-          needle.lower() in (a.get("text", "") + " " + a.get("content-desc", "")).lower()
-    if hit:
-        x1, y1, x2, y2 = map(int, re.findall(r"\d+", a["bounds"]))
-        print((x1 + x2) // 2, (y1 + y2) // 2)
-        break
+    text, desc = a.get("text", ""), a.get("content-desc", "")
+    if needle.startswith("class:"):
+        rank = 0 if a.get("class") == needle[6:] else None
+    elif low in (text.lower(), desc.lower()):
+        rank = 0                     # exact label: the chip, not a message that mentions it
+    elif low in desc.lower():
+        rank = 1                     # a labelled button
+    elif low in text.lower():
+        rank = 2                     # plain text containing it
+    else:
+        rank = None
+    if rank is not None and (best is None or rank < best[0]):
+        best = (rank, a["bounds"])
+if best:
+    x1, y1, x2, y2 = map(int, re.findall(r"\d+", best[1]))
+    print((x1 + x2) // 2, (y1 + y2) // 2)
 ' "$1"
 }
 
