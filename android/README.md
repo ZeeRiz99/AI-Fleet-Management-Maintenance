@@ -1,4 +1,4 @@
-# FleetAI: Android app
+# FleetLog AI: Android app (v1.0 was "FleetAI")
 
 Native Android client for the **AI Fleet Management & Maintenance System**
 (this repo's `android/` folder; backend and ML in the same repo; [web dashboard](https://ai-fleet-management.streamlit.app/)).
@@ -42,13 +42,15 @@ snapshot of that same API (Profile → **Data source**):
 
 ## Try it on a phone (APK)
 
-1. On the Android phone, download **`FleetAI.apk`** from the repo's
-   [Releases](https://github.com/ZeeRiz99/AI-Fleet-Management-Maintenance/releases/latest) page.
+1. On the Android phone, download **`FleetLog-AI.apk`** (v1.1) from the repo's
+   [Releases](https://github.com/ZeeRiz99/AI-Fleet-Management-Maintenance/releases/latest) page. It installs as an
+   update over v1.0 (`FleetAI.apk`, same signing key).
 2. Open it and allow **Install unknown apps** for the browser / Files app when Android asks (the APK is not from
    the Play Store). Android 8.0 or newer.
-3. Open **FleetAI**. It starts in **GitHub data** mode: no account, no server, works anywhere with internet.
+3. Open **FleetLog AI**. It starts in **GitHub data** mode: no account, no server, works anywhere with internet.
 4. Try: Home → top at-risk vehicle → AI prediction and SHAP reasons; Fuel → *Check a fuel entry*
-   (e.g. 200 km, 45 L); Alerts; Profile → theme and AI model card.
+   (e.g. 200 km, 45 L); Alerts; Profile → theme and AI model card; Home → **Ask FleetLog AI** → `driver LEA-22-2030`
+   → `brake se awaaz aa rahi hai`.
 5. Optional, with the laptop server running: Profile → Data source → **Live server**, sign in with
    `admin` / `fleet123`, then **Mark service done** on a vehicle and watch the risk drop.
 
@@ -88,15 +90,17 @@ is unreachable, the last successful response is shown with an "Offline — showi
 
 The fleet data is simulated (hybrid of two public datasets + a generator); see the backend README for details and limits.
 
-## Ask FleetLog AI (v1.1, not released yet)
+## Ask FleetLog AI (v1.1)
 
 Version 1.1 renames the app to **FleetLog AI** and adds a chat screen (Home → "Ask FleetLog AI") that talks to the same
 agent drivers and managers use on Telegram ([ops/README.md](../ops/README.md)): report a problem, book a workshop slot,
 approve bookings with the inline buttons, 🎤 voice input through the phone's own speech recogniser (typing still works
 on phones without one). Build settings in `local.properties` (git-ignored): `fleetlog.url` (the Vercel URL) and
 `fleetlog.appKey` (same value as `OPS_APP_KEY` on the server; a soft gate, since it ships inside the APK).
-Built and unit-tested (`AssistantContractTest` parses a real `/api/chat` response); not yet tested on a phone, and the
-released APK is still v1.0.
+Unit-tested (`AssistantContractTest` parses a real `/api/chat` response) and checked end to end on a GitHub-hosted
+emulator against the live bot by [`.github/workflows/android-ui-check.yml`](../.github/workflows/android-ui-check.yml)
+(screenshots after every step; that check also found and fixed missing accessibility labels). Not yet tested on a real
+phone.
 
 ## Architecture
 

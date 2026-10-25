@@ -34,6 +34,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.style.TextOverflow
@@ -82,6 +84,8 @@ fun DashboardScreen(actions: DashboardActions, viewModel: DashboardViewModel = v
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = actions.openAssistant,
+                // the label is not exposed to accessibility on its own (found by the CI UI check): TalkBack reads this
+                modifier = Modifier.semantics { contentDescription = "Ask FleetLog AI" },
                 icon = { Icon(FleetIcons.Sparkle, contentDescription = null) },
                 text = { Text("Ask FleetLog AI") },
             )
