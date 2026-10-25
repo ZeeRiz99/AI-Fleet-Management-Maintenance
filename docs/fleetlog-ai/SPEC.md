@@ -145,10 +145,10 @@ Ask before starting the emulator.
 | 1 | Workflow core (LangGraph) + store + tools (driver + manager) + offline router + LLM layer with fakes + tests | **done**, live with Gemini + Groq |
 | 2 | Telegram webhook + buttons + setup script + tests → local test | **done**, live-tested (laptop polling, then Vercel); no tunnel needed |
 | 3 | Vercel bundle + deploy guide (verify free-tier limits) → live /health + full Telegram flow | **done**: https://fleetlog-ai.vercel.app, Upstash us-east-1 |
-| 5 | Android "Ask FleetLog AI" screen → build, test on phone | built + unit-tested (v1.1 debug); emulator/phone test and release APK pending |
+| 5 | Android "Ask FleetLog AI" screen → build, test on phone | **done**: v1.1 released; end-to-end UI check on a GitHub-hosted emulator against the live bot (CI); real-phone test pending |
 | 4 | Morning brief job (Vercel Cron) + optional n8n / Apps Script workflows | **done**; brief live-tested; Apps Script sample instead of n8n |
 | 6 | WhatsApp → Meta test number | built + unit-tested; waiting for a Meta app |
-| 7 | Docs (ops/README, limits and honesty notes), README sections, CLAUDE.md; ask before pushing the branch | docs done; release APK + merge to main need the user's OK |
+| 7 | Docs (ops/README, limits and honesty notes), README sections, CLAUDE.md; ask before pushing the branch | **done**: docs, README with screenshots, merged to main, APK v1.1 released |
 
 Deviations from the plan, all from live tests: replies are checked against tool results (`brain.ungrounded`), safety
 advice is enforced in code, one report per problem, acknowledgements get a short reply, slot filters (date/part),

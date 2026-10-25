@@ -132,6 +132,16 @@ that the manager approves with one tap. Every morning the manager gets a brief.
   </tr>
 </table>
 
+**In the Android app (v1.1):** Home → "Ask FleetLog AI" talks to the same agent. Screenshots from the automated UI check
+on a GitHub-hosted emulator, against the live bot ([workflow](.github/workflows/android-ui-check.yml)):
+
+<p>
+  <img src="docs/fleetlog-ai/screenshots/06-app-home.png" width="200" alt="Home with the Ask FleetLog AI button">
+  <img src="docs/fleetlog-ai/screenshots/07-app-chat-report.png" width="200" alt="Driver report in the app">
+  <img src="docs/fleetlog-ai/screenshots/08-app-booking.png" width="200" alt="Booking with Approve and Reschedule buttons">
+  <img src="docs/fleetlog-ai/screenshots/09-app-approve.png" width="200" alt="Manager approves in the app">
+</p>
+
 ```mermaid
 flowchart LR
     D["Driver<br/>text / voice / location"] --> CH["Telegram · WhatsApp · Android app"]
@@ -156,7 +166,8 @@ What is behind it (all in [`ops/`](ops/README.md)):
 * **Hosting (free tiers):** Vercel Hobby (serverless Python) + Upstash Redis; daily cron for the brief.
 
 **Status, honestly:** Telegram, the AI agent, voice notes, the brief and the Vercel deployment are live-tested
-(Oct 2026). The WhatsApp channel and the app's chat screen are built and unit-tested but not yet tested live. Risk and fuel
+(Oct 2026); the app's chat screen passes an end-to-end check on an emulator (not yet on a real phone). The WhatsApp
+channel is built and unit-tested but not yet tested live. Risk and fuel
 figures come from the simulated fleet scored as of 1 Jan 2026; reports and bookings are live. Vercel Hobby is for
 non-commercial use; a client deployment needs paid plans (see [ops/README.md](ops/README.md)).
 
