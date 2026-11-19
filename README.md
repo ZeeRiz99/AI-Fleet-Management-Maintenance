@@ -6,6 +6,17 @@
 
 **FleetLog AI (Telegram bot + AI agent):** [t.me/zeeriz_bot](https://t.me/zeeriz_bot) · [what it does](#fleetlog-ai--ai-fleet-log-assistant)
 
+## Two parts, one system
+
+| | Fleet dashboard + Android app | FleetLog AI (driver bot) |
+|---|---|---|
+| For | Fleet managers | Drivers and managers, in chat |
+| What it does | Predicts each vehicle's 30-day breakdown risk (XGBoost + SHAP), flags abnormal fuel use, shows the Rs impact | Drivers report problems in Roman Urdu (text or voice) and get safety advice, a risk score, a manager alert and a workshop booking |
+| Try it | [Live demo](https://ai-fleet-management.streamlit.app/) · [Android APK](https://github.com/ZeeRiz99/AI-Fleet-Management-Maintenance/releases/latest) | [t.me/zeeriz_bot](https://t.me/zeeriz_bot) · [ops/README](ops/README.md) |
+| Code | `app/`, `api/`, `android/`, `src/` | `ops/`, `docs/fleetlog-ai/` |
+
+Both parts run on the same simulated fleet data and the same breakdown model. Honest status notes are in the sections below.
+
 <p>
   <img src="android/docs/screenshots/01-dashboard.png" width="180" alt="Android dashboard">
   <img src="android/docs/screenshots/02-ai-prediction.png" width="180" alt="AI prediction">
